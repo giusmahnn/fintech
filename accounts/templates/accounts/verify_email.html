@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+
+{% block title %}Verify Email{% endblock title %}
+
+{% block content %}
+
+<div class="container">
+    <h1>Verify Email</h1>
+    <br>
+    <strong>Hello, {{name}}</strong>
+    <p>Thank you for signing up! We have sent you an email with a verification link. 
+        Please click on the link to verify your email address.
+    </p>
+    <a href="{{verify_link}}">verify</a>
+    <br>
+    <br>
+    <p>If you don't receive the email within a few minutes, please check your spam folder or try again.</p>
+</div>
+
+{% endblock content %}

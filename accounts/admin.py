@@ -14,14 +14,14 @@ class UserAdmin(admin.ModelAdmin):
     list_filter = ['is_verified', 'date_joined', 'last_login']
     ordering = ['date_joined']
     readonly_fields = ['otp_created_at', 'otp']
-    fieldsets = (
-        (None, {'fields': ('phone_number', 'email', 'password')}),
-        ('Personal info', {'fields': ('first_name', 'last_name')}),
-        ('Permissions', {'fields': ('is_verified', 'is_staff', 'is_superuser')}),
-        ('Important dates', {'fields': ('last_login', 'date_joined')}),
-        ('OTP', {'fields': ('otp', 'otp_created_at')}),
-        ('Groups', {'fields': ('groups', 'user_permissions')}),
-    )
+    # fieldsets = (
+    #     (None, {'fields': ('phone_number', 'email', 'password')}),
+    #     ('Personal info', {'fields': ('first_name', 'last_name')}),
+    #     ('Permissions', {'fields': ('is_verified', 'is_staff', 'is_superuser')}),
+    #     ('Important dates', {'fields': ('date_joined')}),
+    #     ('OTP', {'fields': ('otp', 'otp_created_at')}),
+    #     ('Groups', {'fields': ('groups', 'user_permissions')}),
+    # )
 @admin.register(Account)
 class AccountAdmin(admin.ModelAdmin):
     list_display = ['user', 'balance', 'currency', 'account_type', 'created_at', 'updated_at']
@@ -29,10 +29,10 @@ class AccountAdmin(admin.ModelAdmin):
     list_filter = ['account_type', 'created_at', 'updated_at']
     ordering = ['created_at']
     readonly_fields = []
-    fieldsets = (
-        (None, {'fields': ('user', 'balance', 'currency', 'account_type')}),
-        ('Important dates', {'fields': ('created_at', 'updated_at')}),
-    )  
+    # fieldsets = (
+    #     (None, {'fields': ('user', 'balance', 'currency', 'account_type')}),
+    #     ('Important dates', {'fields': ('created_at', 'updated_at')}),
+    # )  
 @admin.register(AccountType)
 class AccountTypeAdmin(admin.ModelAdmin):
     list_display = ['name', 'description']

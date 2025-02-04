@@ -1,6 +1,8 @@
+import datetime
 import re
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.utils.timezone import now
 from .choices import (
     Gender,
     AccountType,
@@ -11,26 +13,11 @@ from .choices import (
 
 
 class UserManager(BaseUserManager):
-    def normalize_number(self, number):
-        number = re.sub(r'\D', '', number)
-        if number.startswith("+234"):
-            return '0' + number[4:]
-        elif number.startswith("+"):
-            raise ValueError("Only Nigerian phone numbers starting with +234 are allowed")
-        elif number.startswith("234"):
-            return number
-        elif len(number) != 11:
-            raise ValueError("Phone number must be 11 digits")
-        return number
-
-    def create_user(self, phone_number, email, password=None, **extra_fields):
-        if not phone_number:
-            raise ValueError("The phone number is required")
+    def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise ValueError("The email is required")
         email=self.normalize_email(email)
-        phone_number = self.normalize_number(phone_number)
-        user = self.model(phone_number, email, **extra_fields)
+        user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
         return user
@@ -47,28 +34,31 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractUser):
-
+    username = models.CharField(max_length=150, blank=True, null=True, unique=True)
     first_name = models.CharField(max_length=50, blank=True, null=True)
     last_name = models.CharField(max_length=50, blank=True, null=True)
     profile_picture = models.ImageField(upload_to='profile_pictures/', default="profile_images/default-profile-image.png", 
                                         blank=True, null=True)
-    phone_number = models.CharField(max_length=15, unique=True, blank=False, null=False)
+    phone_number = models.CharField(max_length=15, unique=True, blank=True, null=True)
     date_of_birth = models.DateField(null=True, blank=True)  # "YYYY-MM-DD"
     email = models.EmailField(max_length=255, unique=True)
     gender = models.CharField(max_length=10, choices=Gender.choices, blank=True, null=True)
-    date_joined = models.DateTimeField(auto_now_add=True)
+    date_joined = models.DateTimeField(default=now)
     roles = models.CharField(max_length=9, choices=Role.choices, default='CUSTOMER')
     last_login = models.DateTimeField(auto_now=True)
     is_verified = models.BooleanField(default=False)
     otp = models.IntegerField(blank=True, null=True)
     otp_created_at = models.DateTimeField(blank=True, null=True)
 
+    USERNAME_FIELD = 'email'
     objects = UserManager()
-    USERNAME_FIELD = 'phone_number'
-    REQUIRED_FIELDS = ['email']
+    REQUIRED_FIELDS = []
 
     def __str__(self):
-        return self.phone_number
+        return self.email
+    
+    def get_fullname(self):
+        return f"{self.first_name} {self.last_name}"
     
     def verify_otp(self, otp):
         if self.otp == otp:
@@ -78,6 +68,12 @@ class User(AbstractUser):
             self.save()
             return True
         return False
+    
+    def otp_created(self):
+        if self.otp:
+            self.otp_created_at = datetime.datetime.now(datetime.timezone.utc)
+            return True
+
     
     def reset_otp(self):
         self.otp = None
@@ -103,7 +99,7 @@ class Account(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.user.email} - {self.account_number}"
+        return f"{self.user.email} - {self.user.phone_number}"
     
     def is_mini_balance_violated(self):
         return self.balance < self.account_type.min_balance
@@ -148,7 +144,7 @@ class Account(models.Model):
         return account
 
 class AccountType(models.Model):
-    name = models.CharField(max_length=50, choices=AccountType.choices ,unique=True)  # e.g., Savings, Checking, Credit
+    name = models.CharField(max_length=50, choices=AccountType.choices ,unique=True, default="Savings")  # e.g., Savings, Checking, Credit
     description = models.TextField(blank=True, null=True)
     interest_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)  # Annual interest rate
     min_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)  # Minimum balance required

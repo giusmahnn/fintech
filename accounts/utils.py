@@ -31,7 +31,7 @@ def send_email(user_email, subject, template):
         subject=subject,
         body=template,
         from_email=from_email,
-        to_email=to_email
+        to=to_email
     )
 
     email.content_subtype = 'email'
@@ -71,3 +71,16 @@ def validate_password(value):
     if not re.search(r'[@_!#$%^&*()<>?/\|}{~:]', value):
         raise ValidationError("Password must contain atleast one special character")
     return value
+
+
+
+def normalize_number(number):
+    if number.startswith("+234"):
+        return '' + number[4:]
+    elif number.startswith("+"):
+        raise ValueError("Only Nigerian phone numbers starting with +234 are allowed")
+    elif number.startswith("234"):
+        return number
+    elif len(number) != 11:
+        raise ValueError("Phone number must be 11 digits")
+    return number
