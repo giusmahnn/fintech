@@ -1,16 +1,21 @@
-from datetime import timezone
 from django.shortcuts import render
 from rest_framework.views import APIView
 from django.conf import settings
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
 from django.template.loader import render_to_string
 from rest_framework import status
-from .utils import *
-
-from .utils import *
-from .serializers import *
-from .models import *
+from .utils import (
+    generate_otp,
+    send_email,
+    jwt_auth,
+)
+from .models import User
+from .serializers import (
+    UserSerializer,
+    LoginSerializer,
+    ProfileSerializer,
+)
 # Create your views here.
 
 
@@ -83,4 +88,19 @@ class LoginUsersView(APIView):
             data["User data"] = UserSerializer(user).data
             data["JWT_Token"] = jwt_auth(user)
             return Response(data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+class ProfileView(APIView):
+    def get(self, request):
+        user = request.user
+        serializer = ProfileSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def put(self, request):
+        user = request.user
+        serializer = ProfileSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

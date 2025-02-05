@@ -64,4 +64,27 @@ class UserSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     phone_number = serializers.CharField(required=True)
     password = serializers.CharField()
-    
+
+
+class ProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'id',
+            'first_name',
+            'last_name',
+            'username',
+            'profile_picture',
+            'phone_number',
+            'date_of_birth',
+            'email',
+            'gender',
+        ]
+        extra_kwargs = {
+            'id': {'read_only': True},
+            'first_name': {'read_only': True},
+            'last_name': {'read_only': True},
+            'phone_number': {'read_only': True},
+            'date_of_birth': {'read_only': True},
+            'gender': {'read_only': True},
+        }

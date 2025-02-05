@@ -4,6 +4,7 @@ from .views import (
     UserCreateView,
     VerifyEmailAddress,
     LoginUsersView,
+    ProfileView,
 )
 
 
@@ -12,5 +13,5 @@ urlpatterns = [
     path("signup/", UserCreateView.as_view()),
     path("verify/<str:otp>/", VerifyEmailAddress.as_view()),
     path("login-users/", LoginUsersView.as_view()),
-    
+    path("profile/", ProfileView.as_view()),
 ]
