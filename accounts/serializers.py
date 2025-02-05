@@ -58,3 +58,10 @@ class UserSerializer(serializers.ModelSerializer):
         user.set_password(validated_data['password'])  # Hash the password  
         user.save()  
         return user 
+    
+
+
+class LoginSerializer(serializers.Serializer):
+    phone_number = serializers.CharField(required=True)
+    password = serializers.CharField()
+    
