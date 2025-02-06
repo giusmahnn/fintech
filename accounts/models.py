@@ -92,6 +92,7 @@ class User(AbstractUser):
 
 class Account(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="accounts")
+    account_number = models.CharField(max_length=15, unique=True, null=True, blank=True)
     balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
     currency = models.CharField(max_length=3, default='NGR')
     account_type = models.ForeignKey('AccountType', on_delete=models.PROTECT, related_name='accounts') 
@@ -101,6 +102,22 @@ class Account(models.Model):
     def __str__(self):
         return f"{self.user.email} - {self.user.phone_number}"
     
+    def normalize_phone(self):
+        """Convert phone number to a standard 10-digit format."""
+        phone = re.sub(r'\D', '', self.user.phone_number)  # Remove non-numeric characters
+
+        if phone.startswith("234"):  # Handle +234 or 234 cases
+            return '0' + phone[3:]  # Convert '2348123456789' → '08123456789'
+        elif phone.startswith("0") and len(phone) == 11:  # Already valid
+            return phone
+        else:
+            raise ValueError("Invalid Nigerian phone number format")
+
+    def save(self, *args, **kwargs):
+        if not self.account_number:
+            self.account_number = self.normalize_phone()[1:]  # Remove first digit → Get 10-digit number
+        super().save(*args, **kwargs)
+
     def is_mini_balance_violated(self):
         return self.balance < self.account_type.min_balance
     
