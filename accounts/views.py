@@ -52,7 +52,7 @@ class VerifyEmailAddress(APIView):
             user.reset_otp()
             user.save()
             return Response({"Message": "Your email has been verified"}, status=status.HTTP_200_OK)
-        except User.DoesNotExist:
+        except Account.DoesNotExist:
             return Response({"Message": "Invalid OTP"})
 
 
@@ -64,18 +64,11 @@ class LoginUsersView(APIView):
         data = {}
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
-            phone_number = serializer.validated_data.get("phone_number")
-            password = serializer.validated_data.get("password")
-            if phone_number:
-                try:
-                    user = User.objects.get(phone_number=phone_number)
-                except User.DoesNotExist:
-                    return Response({"error": "User not found with this phone number."}, status=status.HTTP_404_NOT_FOUND)
-            if not user.check_password(password):
-                return Response({"error": "Incorrect password."}, status=status.HTTP_401_UNAUTHORIZED)
+            user = serializer.validated_data
             context = {
-                "name": user.get_fullname(),
-                "last_login": user.last_login
+                "name": user.get_full_name(),
+                "last_login": user.last_login,
+                "current_year": timezone.now().year
             }
             html_message = render_to_string('accounts/login_email.html', context)
             send_email(user.email, 'Login Notification', html_message)

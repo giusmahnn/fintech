@@ -62,6 +62,19 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    phone_number = serializers.CharField(required=True)
-    password = serializers.CharField()
+    account_number = serializers.CharField(required=True)
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        account_number = data.get('account_number')
+        password = data.get('password')
+        try:
+            account = Account.objects.get(account_number=account_number)
+            user = account.user
+            if user.check_password(password):
+                return user
+            else:
+                raise serializers.ValidationError("Incorrect password")
+        except Account.DoesNotExist:
+            raise serializers.ValidationError("Account not found")
     
