@@ -67,24 +67,11 @@ class LoginSerializer(serializers.Serializer):
 
 
 class ProfileSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
     class Meta:
-        model = User
+        model = Account
         fields = [
-            'id',
-            'first_name',
-            'last_name',
-            'username',
-            'profile_picture',
-            'phone_number',
-            'date_of_birth',
-            'email',
-            'gender',
+            'user',
+            'account_number',
         ]
-        extra_kwargs = {
-            'id': {'read_only': True},
-            'first_name': {'read_only': True},
-            'last_name': {'read_only': True},
-            'phone_number': {'read_only': True},
-            'date_of_birth': {'read_only': True},
-            'gender': {'read_only': True},
-        }
+        
