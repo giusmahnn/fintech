@@ -42,18 +42,19 @@ class UserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(str(e))
         if data["password"] != data["password_confirmation"]:
             raise serializers.ValidationError("Passwords do not match")
-        # data["phone_number"] = normalize_number(data["phone_number"])
         return data
     
-    def validate_phone_number(self, value):  
-        """Validate the phone number and ensure it doesn't start with '0' or '+234'."""  
-        if value.startswith('0'):  
-            raise serializers.ValidationError("Phone number cannot start with '0'.")
-        return value
+    def validate_phone_number(self, value):
+        if not re.match(r"^\+234\d{10}$|^0\d{10}$", value):
+            raise serializers.ValidationError("Invalid phone number")
+        try:
+            return normalize_number(value)
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
     
-    def create(self, validated_data):
-        validated_data['phone_number'] = self.validate_phone_number(validated_data['phone_number'])  
-        validated_data.pop('password_confirmation')  # Remove confirmation as it's not needed  
+    def create(self, validated_data): 
+        validated_data.pop('password_confirmation')  # Remove password confirmation from validated data as it is not needed for user creation  
+        # Ensure the password is hashed before saving the user
         user = User(**validated_data)  
         user.set_password(validated_data['password'])  # Hash the password  
         user.save()  
@@ -62,8 +63,8 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    phone_number = serializers.CharField(required=True)
-    password = serializers.CharField()
+    account_number = serializers.CharField(required=True)
+    password = serializers.CharField(write_only=True)
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -75,3 +76,5 @@ class ProfileSerializer(serializers.ModelSerializer):
             'account_number',
         ]
         
+    
+    
