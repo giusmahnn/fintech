@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from django.conf import settings
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.template.loader import render_to_string
 from rest_framework import status
 from .utils import (
@@ -10,11 +10,11 @@ from .utils import (
     send_email,
     jwt_auth,
 )
-from .models import User
+from .models import Account, User
 from .serializers import (
     UserSerializer,
     LoginSerializer,
-    # ProfileSerializer,
+    ProfileSerializer,
 )
 # Create your views here.
 
@@ -71,7 +71,7 @@ class LoginUsersView(APIView):
         if serializer.is_valid():
             user = serializer.validated_data
             context = {
-                "name": user.get_full_name(),
+                "name": user.get_fullname(),
                 "last_login": user.last_login,
             }
             html_message = render_to_string('accounts/login_email.html', context)
@@ -83,16 +83,18 @@ class LoginUsersView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
-# class ProfileView(APIView):
-#     def get(self, request):
-#         user = request.user
-#         serializer = ProfileSerializer(user)
-#         return Response(serializer.data, status=status.HTTP_200_OK)
+class ProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        user = request.user
+        account = Account.objects.get(user=user)
+        serializer = ProfileSerializer(account)
+        return Response(serializer.data, status=status.HTTP_200_OK)
     
-#     def put(self, request):
-#         user = request.user
-#         serializer = ProfileSerializer(user, data=request.data, partial=True)
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response(serializer.data, status=status.HTTP_200_OK)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def put(self, request):
+        account = Account.objects.filter(user=request.user).first()
+        serializer = ProfileSerializer(account, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
