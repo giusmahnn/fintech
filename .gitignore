@@ -1,6 +1,7 @@
 .env
 env
 .qodo
+logs
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

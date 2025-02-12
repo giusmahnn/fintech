@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.template.loader import render_to_string
 from rest_framework import status
+import logging
 from .utils import (
     generate_otp,
     send_email,
@@ -18,6 +19,7 @@ from .serializers import (
 )
 # Create your views here.
 
+logger = logging.getLogger("accounts")
 
 def home(request):
     context = {}  # Add context variables here if needed
@@ -96,5 +98,6 @@ class ProfileView(APIView):
         serializer = ProfileSerializer(account, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
+            logger.info(f"User {request.user.email} accessed their profile.")
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
