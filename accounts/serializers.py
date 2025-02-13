@@ -112,3 +112,17 @@ class ProfileSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
     
     
+class ResetPasswordSerializer(serializers.Serializer):
+    otp = serializers.CharField(required=True,write_only=True)
+    password = serializers.CharField(write_only=True)
+    password_confirmation = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        try:
+            validate_password(data["password"])
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
+        if data["password"] != data["password_confirmation"]:
+            raise serializers.ValidationError("Passwords do not match")
+        return data
+    
