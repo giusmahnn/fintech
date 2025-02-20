@@ -1,4 +1,7 @@
 from django.urls import path
+from transactions.views import (
+    TransferMoneyView
+)
 
 
 
@@ -6,5 +9,5 @@ from django.urls import path
 
 
 urlpatterns = [
-    
+    path('transfer/', TransferMoneyView.as_view())
 ]
