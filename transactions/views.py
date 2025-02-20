@@ -7,7 +7,7 @@ from rest_framework import status
 import logging
 
 from transactions.models import Transaction
-from transactions.serializers import TransactionSerializer
+from transactions.serializers import TransactionSerializer, WithdrawalSerializer
 from accounts.models import Account
 
 logger = logging.getLogger("transactions")
@@ -29,12 +29,19 @@ class WithdrawMoneyView(APIView):
 
     def post(self, request):
         amount = request.data.get('amount')
-        if not amount or float(amount) < 0:
+        if not amount or Decimal(amount) < 0:
             return Response({"error": "Invalid amount"}, status=status.HTTP_400_BAD_REQUEST)
         account = get_object_or_404(Account, user=request.user)
-        transaction = Transaction(account=account, amount=float(amount))
-        transaction = transaction.withdraw(float(amount))
-        return Response(TransactionSerializer(transaction).data, status=status.HTTP_201_CREATED)
+        transaction = Transaction.objects.create(
+            user=request.user,
+            account=account, 
+            amount=amount, 
+            transaction_type="withdrawal", 
+            status="pending"
+            )
+        transaction.process_transaction()
+
+        return Response(WithdrawalSerializer(transaction).data, status=status.HTTP_201_CREATED)
 
 class TransferMoneyView(APIView):
     permission_classes = [IsAuthenticated]
@@ -43,7 +50,7 @@ class TransferMoneyView(APIView):
         amount = request.data.get('amount')
         recipient_account_number = request.data.get('recipient_account_number')
         narration = request.data.get('narration')
-        if not amount or Decimal(amount) <= 0:
+        if not amount or Decimal(amount) < 0:
             return Response({"error": "Invalid amount"}, status=status.HTTP_400_BAD_REQUEST)
         if not recipient_account_number:
             return Response({"error": "Recipient account number is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -54,8 +61,15 @@ class TransferMoneyView(APIView):
             account=sender_account,
             recipient_account=recipient_account,
             amount=Decimal(amount),
+            narration=narration,
             transaction_type="transfer",
             status="pending",
         )
-        transaction.process_transaction()
+        try:
+            transaction.process_transaction()
+        except Exception as e:
+            transaction.status = "completed"
+            logger.error(f"Transaction processing failed: {e}")
+            transaction.status = "failed"
+        transaction.save()
         return Response(TransactionSerializer(transaction).data, status=status.HTTP_201_CREATED)

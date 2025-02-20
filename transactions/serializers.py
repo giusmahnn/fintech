@@ -24,3 +24,15 @@ class TransactionSerializer(serializers.ModelSerializer):
         ]
     def get_beneficiary_name(self, obj):
         return obj.recipient_account.user.get_fullname()
+
+
+class WithdrawalSerializer(serializers.ModelSerializer):
+    """Serializer for withdrawal transaction"""
+    class Meta:
+        model = Transaction
+        fields = [
+            "id",
+            "amount",
+            "status",
+            "date",
+        ]
