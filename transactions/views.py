@@ -7,7 +7,7 @@ from rest_framework import status
 import logging
 
 from transactions.models import Transaction
-from transactions.serializers import TransactionSerializer, WithdrawalSerializer
+from transactions.serializers import TransactionSerializer, WithdrawalSerializer, DepositSerializer
 from accounts.models import Account
 
 logger = logging.getLogger("transactions")
@@ -17,12 +17,18 @@ class DepositMoneyView(APIView):
 
     def post(self, request):
         amount = request.data.get('amount')
-        if not amount or float(amount) < 0:
+        if not amount or Decimal(amount) < 0:
             return Response({"error": "Invalid amount"}, status=status.HTTP_400_BAD_REQUEST)
         account = get_object_or_404(Account, user=request.user)
-        transaction = Transaction(account=account, amount=float(amount))
-        transaction = transaction.deposit(float(amount))
-        return Response(TransactionSerializer(transaction).data, status=status.HTTP_201_CREATED)
+        transaction = Transaction.objects.create(
+            user=request.user,
+            account=account, 
+            amount=amount, 
+            transaction_type="deposit", 
+            status="pending"
+            )
+        transaction.process_transaction()
+        return Response(DepositSerializer(transaction).data, status=status.HTTP_201_CREATED)
 
 class WithdrawMoneyView(APIView):
     permission_classes = [IsAuthenticated]

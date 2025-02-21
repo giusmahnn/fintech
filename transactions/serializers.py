@@ -36,3 +36,14 @@ class WithdrawalSerializer(serializers.ModelSerializer):
             "status",
             "date",
         ]
+
+
+class DepositSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Transaction
+        fields = [
+            "id",
+            "amount",
+            "status",
+            "date",
+        ]
