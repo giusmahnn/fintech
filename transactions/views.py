@@ -3,12 +3,18 @@ from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from transactions.pagination import CustomPagination
+from transactions.filters import TransactionFilter
 from rest_framework import status
+from accounts.models import Account
 import logging
 
 from transactions.models import Transaction
-from transactions.serializers import TransactionSerializer, WithdrawalSerializer, DepositSerializer
-from accounts.models import Account
+from transactions.serializers import (
+    TransactionSerializer, 
+    WithdrawalSerializer, 
+    DepositSerializer,
+    TransactionFilterSerializer)
 
 logger = logging.getLogger("transactions")
 
@@ -79,3 +85,20 @@ class TransferMoneyView(APIView):
             transaction.status = "failed"
         transaction.save()
         return Response(TransactionSerializer(transaction).data, status=status.HTTP_201_CREATED)
+    
+
+
+class TransactionFilterView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        user = request.user
+        queryset = Transaction.objects.filter(user=user)
+        transaction_filter = TransactionFilter(request.GET, queryset=queryset)
+        if not transaction_filter.is_valid():
+            return Response({"error": "Invalid filters"}, status=status.HTTP_400_BAD_REQUEST)
+        queryset = transaction_filter.qs
+        paginator = CustomPagination()
+        page = paginator.paginate_queryset(queryset, request)
+        if page is not None:
+            serializer = TransactionFilterSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)

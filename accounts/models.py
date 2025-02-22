@@ -100,7 +100,7 @@ class Account(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.user.email} - {self.user.phone_number}"
+        return f"{self.user.email} - {self.account_number}"
     
     def normalize_phone(self):
         """Convert phone number to a standard 10-digit format."""

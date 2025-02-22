@@ -47,3 +47,17 @@ class DepositSerializer(serializers.ModelSerializer):
             "status",
             "date",
         ]
+
+
+class TransactionFilterSerializer(serializers.ModelSerializer):
+    """Serializer for filtering transactions by account number"""
+    recipient_account = serializers.StringRelatedField()
+    class Meta:
+        model = Transaction
+        fields = [
+            "recipient_account",
+            "amount",
+            "status",
+            "date",
+            "transaction_type",
+        ]

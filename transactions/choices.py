@@ -5,12 +5,12 @@ from django.db import models
 
 class TransactionType(models.TextChoices):
     DEPOSIT = "deposit", _("Deposit")
-    WITHDRAW = "withdraw", _("Withdraw")
+    WITHDRAWAL = "withdrawal", _("Withdrawal")
     TRANSFER = "transfer", _("Transfer")
 
 
 class Status(models.TextChoices):
     PENDING = "pending", _("Pending")
-    COMPLETED = "completed", _("Completed")
+    SUCCESS = "success", _("Success")
     FAILED = "failed", _("Failed")
     
