@@ -1,6 +1,7 @@
 import django_filters
 from transactions.models import Transaction
 from transactions.choices import Status, TransactionType
+from django.db.models import Sum
 
 
 class TransactionFilter(django_filters.FilterSet):
@@ -21,3 +22,13 @@ class TransactionFilter(django_filters.FilterSet):
         if value:  
             queryset = queryset.filter(date__month=value)  
         return queryset
+
+    def get_summary(self): 
+        queryset = self.qs  
+        total_in = queryset.filter().aggregate(Sum('amount'))['amount__sum'] or 0  
+        total_out = queryset.filter().aggregate(Sum('amount'))['amount__sum'] or 0  
+
+        return {  
+            'In': total_in,  
+            'Out': total_out
+        }  

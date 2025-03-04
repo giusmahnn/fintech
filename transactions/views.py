@@ -3,10 +3,12 @@ from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from transactions.choices import TransactionType
 from transactions.pagination import CustomPagination
 from transactions.filters import TransactionFilter
 from rest_framework import status
 from accounts.models import Account
+from django.db.models import Sum, Q
 import logging
 
 from transactions.models import Transaction
@@ -97,8 +99,21 @@ class TransactionFilterView(APIView):
         if not transaction_filter.is_valid():
             return Response({"error": "Invalid filters"}, status=status.HTTP_400_BAD_REQUEST)
         queryset = transaction_filter.qs
+        transaction_summary = queryset.aggregate(  
+            total_income=Sum('amount', filter=Q(transaction_type='success')),  
+            total_expense=Sum('amount', filter=Q(transaction_type='success'))  
+        )
         paginator = CustomPagination()
         page = paginator.paginate_queryset(queryset, request)
         if page is not None:
             serializer = TransactionFilterSerializer(page, many=True)
-            return paginator.get_paginated_response(serializer.data)
+            response_data = paginator.get_paginated_response(serializer.data)
+
+            response_data.data['summary'] = transaction_summary  
+            return Response(response_data.data, status=status.HTTP_200_OK)
+        serializer = TransactionFilterSerializer(queryset, many=True)  
+        response_data = {  
+            "transactions": serializer.data,  
+            "summary": transaction_summary  
+        }  
+        return Response(response_data, status=status.HTTP_200_OK)

@@ -16,6 +16,7 @@ class Transaction(models.Model):
     amount = models.DecimalField(max_digits=15, decimal_places=2)
     transaction_type = models.CharField(max_length=10, choices=TransactionType.choices)
     status = models.CharField(max_length=10, choices=Status.choices, default="pending")
+    # is_incoming = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
