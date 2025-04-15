@@ -5,10 +5,11 @@ from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
 from .models import User
 import datetime
+import logging
 import random
 import re
 
-
+logger = logging.getLogger("accounts")
 
 def generate_otp(*,k=4):
     return ''.join(random.choices(string.digits, k=k))
@@ -40,6 +41,7 @@ def send_email(user_email, subject, template):
     try:
         email.send(fail_silently=False)
     except Exception as e:
+        logger.error(f"Failed to send email to {user_email}: {str(e)}")
         print(f"Failed to send email t{user_email}: {str(e)}")
         return "Email sending failed"
     return None

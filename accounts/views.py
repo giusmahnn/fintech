@@ -99,6 +99,8 @@ class ProfileView(APIView):
     
     def put(self, request):
         account = Account.objects.filter(user=request.user).first()
+        if not account:
+            return Response({"message": "Account not found"}, status=status.HTTP_404_NOT_FOUND)
         serializer = ProfileSerializer(account, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()

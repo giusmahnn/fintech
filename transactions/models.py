@@ -26,36 +26,41 @@ class Transaction(models.Model):
     
 
     def process_transaction(self):
-        with transaction.atomic():
-            amount = Decimal(self.amount)
-            if self.transaction_type == "withdrawal":
-                if not self.account.can_withdraw(amount):
-                    self.status = "failed"
-                    raise ValueError("Insufficient balance or below minimum balance")
-                self.account.balance -= amount
-                self.status = "completed"
-                self.account.save()
-                self.save() # Save the transaction history
+        try:
+            with transaction.atomic():
+                amount = Decimal(self.amount)
+                if self.transaction_type == "withdrawal":
+                    if not self.account.can_withdraw(amount):
+                        self.status = "failed"
+                        raise ValueError("Insufficient balance or below minimum balance")
+                    self.account.balance -= amount
+                    self.status = "successs"
+                    self.account.save()
+                    self.save() # Save the transaction history
 
-            elif self.transaction_type == "deposit":
-                self.account.balance += amount
-                self.status = "completed"
-                self.account.save()
-                self.save() # Save the transaction history
+                elif self.transaction_type == "deposit":
+                    self.account.balance += amount
+                    self.status = "success"
+                    self.account.save()
+                    self.save() # Save the transaction history
 
-            elif self.transaction_type == "transfer":
-                if not self.recipient_account:
-                    raise ValueError("Recipient account is required for transfer")
-                if not self.account.can_withdraw(amount):
-                    self.status = "failed"
-                    self.save()
-                    raise ValueError("Insufficient balance or below minimum balance")
-                self.account.balance -= amount
-                self.recipient_account.balance += amount
-                self.recipient_account.save()
-            self.account.save()
-            self.status = "success"
+                elif self.transaction_type == "transfer":
+                    if not self.recipient_account:
+                        raise ValueError("Recipient account is required for transfer")
+                    if not self.account.can_withdraw(amount):
+                        self.status = "failed"
+                        self.save()
+                        raise ValueError("Insufficient balance or below minimum balance")
+                    self.account.balance -= amount
+                    self.recipient_account.balance += amount
+                    self.recipient_account.save()
+                self.account.save()
+                self.status = "success"
+                self.save()
+        except Exception as e:
+            self.status = "failed"
             self.save()
+            raise e
 
     def recipient_account_name(self):
         return self.recipient_account.user.get_fullname()

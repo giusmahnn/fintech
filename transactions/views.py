@@ -82,10 +82,9 @@ class TransferMoneyView(APIView):
         try:
             transaction.process_transaction()
         except Exception as e:
-            transaction.status = "completed"
             logger.error(f"Transaction processing failed: {e}")
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
             transaction.status = "failed"
-        transaction.save()
         return Response(TransactionSerializer(transaction).data, status=status.HTTP_201_CREATED)
     
 

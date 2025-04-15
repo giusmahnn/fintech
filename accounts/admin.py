@@ -50,7 +50,7 @@ class AccountLimitAdmin(admin.ModelAdmin):
     ordering = ['account_type']
 
     fieldsets = (
-        (None, {'fields': ('account_type', 'daily_transfer_limit', 'monthly_withdrawal_limit', 'max_single_transfer_amount')}),
+        (None, {'fields': ('account_type', 'daily_transfer_limit', 'max_single_transfer_amount')}),
     )
 @admin.register(AccountUpgradeRequest)
 class AccountUpgradeRequestAdmin(admin.ModelAdmin):

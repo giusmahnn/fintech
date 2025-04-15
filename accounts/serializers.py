@@ -69,6 +69,8 @@ class LoginSerializer(serializers.Serializer):
     def validate(self, data):
         account_number = data.get('account_number')
         password = data.get('password')
+        if not account_number or not password:
+            raise serializers.ValidationError("Account number and password are required")
         try:
             account = Account.objects.get(account_number=account_number)
             user = account.user
@@ -113,7 +115,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     
     
 class ResetPasswordSerializer(serializers.Serializer):
-    otp = serializers.CharField(required=True,write_only=True)
+    # otp = serializers.CharField(required=True,write_only=True)  # Uncomment to use OTP
     password = serializers.CharField(write_only=True)
     password_confirmation = serializers.CharField(write_only=True)
 

@@ -99,11 +99,15 @@ class Account(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # def __str__(self):
+    #     return f"{self.user.email} - {self.account_number}"
     def __str__(self):
-        return f"{self.user.email} - {self.account_number}"
+        return f"{self.account_number} ({self.user.get_fullname()})"
     
     def normalize_phone(self):
         """Convert phone number to a standard 10-digit format."""
+        if not self.user.phone_number:
+            raise ValueError("Phone number is required to generate account number.")
         phone = re.sub(r'\D', '', self.user.phone_number)  # Remove non-numeric characters
 
         if phone.startswith("234"):  # Handle +234 or 234 cases
@@ -199,7 +203,11 @@ class AccountUpgradeRequest(models.Model):
     def approve(self):
         if self.status != "PENDING":
             raise ValueError("Only pending requests can be approved")
+        if self.account.account_type == self.requested_account_type:
+            raise ValueError("Account is already of the requested type")
         self.status = "APPROVED"
+        self.account.account_type = self.requested_account_type
+        self.account.save()
         self.save()
 
     

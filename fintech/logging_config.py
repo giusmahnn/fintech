@@ -5,6 +5,10 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_DIR = os.path.join(BASE_DIR, "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 
+
+if not os.access(LOG_DIR, os.W_OK):
+    raise PermissionError(f"Log directory {LOG_DIR} is not writable.")
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
