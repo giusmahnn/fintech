@@ -169,12 +169,17 @@ class AccountType(models.Model):
     description = models.TextField(blank=True, null=True)
     interest_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)  # Annual interest rate
     min_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)  # Minimum balance required
-    max_balance = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)  # Maximum balance allowed
+    max_balance = models.DecimalField(
+        max_digits=15, 
+        decimal_places=2, 
+        null=True, 
+        blank=True
+    )  # Maximum balance allowed; null signifies no limit (unlimited balance)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.name
+        return f"{self.name} - {self.description or 'No description'}"
     
 
 

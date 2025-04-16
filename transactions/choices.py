@@ -13,4 +13,5 @@ class Status(models.TextChoices):
     PENDING = "pending", _("Pending")
     SUCCESS = "success", _("Success")
     FAILED = "failed", _("Failed")
+    REVERSED = "reversed", _("Reversed")
     

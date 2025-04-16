@@ -2,10 +2,14 @@ from decimal import Decimal
 from django.db import models, transaction
 from accounts.models import Account, User
 import uuid
+import logging
 from .choices import TransactionType, Status
 # Create your models here.
 
 
+
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 class Transaction(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
@@ -64,3 +68,29 @@ class Transaction(models.Model):
 
     def recipient_account_name(self):
         return self.recipient_account.user.get_fullname()
+
+    def reverse_transaction(self):
+        if self.status != "success":
+            raise ValueError("Only successful transactions can be reversed")
+        try:
+            with transaction.atomic():
+                amount = Decimal(str(self.amount))  # Defensive conversion
+                if self.transaction_type == "withdrawal":
+                    self.account.balance += amount
+                    self.account.save()
+                elif self.transaction_type == "deposit":
+                    self.account.balance -= amount
+                    self.account.save()
+                elif self.transaction_type == "transfer":
+                    if not self.recipient_account:
+                        raise ValueError("Recipient account required for transfer reversal")
+                    self.recipient_account.balance -= amount
+                    self.recipient_account.save()
+                    self.account.balance += amount
+                    self.account.save()
+
+                self.status = "reversed"
+                self.save()
+        except Exception as e:
+            logger.error(f"Error reversing transaction {self.id}: {e}")
+            raise ValueError(f"Transaction reversal failed: {str(e)}")  

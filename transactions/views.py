@@ -116,3 +116,21 @@ class TransactionFilterView(APIView):
             "summary": transaction_summary  
         }  
         return Response(response_data, status=status.HTTP_200_OK)
+    
+
+class ReversetransactionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, transaction_id):
+        try:
+            transaction = Transaction.objects.get(id=transaction_id)
+
+            if not request.user.admin:
+                return Response({"error": "You do not have permission to reverse this transaction"}, status=status.HTTP_403_FORBIDDEN)
+            
+            transaction.reverse_transaction()
+            return Response({"Message": "Transaction reversed successfully."}, status=status.HTTP_200_OK)
+        except Transaction.DoesNotExist:
+            return Response({"error": "Transaction not found."}, status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
