@@ -3,7 +3,8 @@ from django.db import models, transaction
 from accounts.models import Account, User
 import uuid
 import logging
-from .choices import TransactionType, Status
+from notifications.services import create_notification
+from .choices import TransactionType, Status, TransactionFlow
 # Create your models here.
 
 
@@ -20,12 +21,12 @@ class Transaction(models.Model):
     amount = models.DecimalField(max_digits=15, decimal_places=2)
     transaction_type = models.CharField(max_length=10, choices=TransactionType.choices)
     status = models.CharField(max_length=10, choices=Status.choices, default="pending")
-    # is_incoming = models.BooleanField(default=False)
+    transaction_flow = models.CharField(max_length=10, choices=TransactionFlow.choices, default="debit")
     date = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.account.user.phone_number} - {self.transaction_type} - {self.status}"
+        return f"{self.account.user.phone_number} - {self.transaction_type} - {self.transaction_flow} - {self.status}"
     
     
 
@@ -33,35 +34,71 @@ class Transaction(models.Model):
         try:
             with transaction.atomic():
                 amount = Decimal(self.amount)
+
                 if self.transaction_type == "withdrawal":
                     if not self.account.can_withdraw(amount):
                         self.status = "failed"
-                        raise ValueError("Insufficient balance or below minimum balance")
+                        self.save()
+                        raise ValueError("Insufficient balance or below minimum balance.")
                     self.account.balance -= amount
-                    self.status = "successs"
-                    self.account.save()
-                    self.save() # Save the transaction history
+                    self.transaction_flow = "debit"
 
                 elif self.transaction_type == "deposit":
                     self.account.balance += amount
-                    self.status = "success"
-                    self.account.save()
-                    self.save() # Save the transaction history
+                    self.transaction_flow = "credit"
 
                 elif self.transaction_type == "transfer":
                     if not self.recipient_account:
-                        raise ValueError("Recipient account is required for transfer")
+                        raise ValueError("Recipient account is required for transfer.")
                     if not self.account.can_withdraw(amount):
                         self.status = "failed"
                         self.save()
-                        raise ValueError("Insufficient balance or below minimum balance")
+                        raise ValueError("Insufficient balance or below minimum balance.")
+                    
+                    # Debit the sender's account
                     self.account.balance -= amount
-                    self.recipient_account.balance += amount
-                    self.recipient_account.save()
-                self.account.save()
+                    self.transaction_flow = "debit"  
+                    self.account.save()
+
+                    # Log the sender's transaction  
+                    # Transaction.objects.create(  
+                    #     user=self.user,  
+                    #     account=self.account,  
+                    #     amount=amount,  
+                    #     transaction_type="transfer",  
+                    #     transaction_flow="debit",  # This should be a debit for the sender  
+                    #     status="success",  
+                    # ) 
+
+                    # Credit the recipient's account
+                    if self.recipient_account:
+                        if not self.recipient_account:
+                            raise ValueError("Recipient account cannot accept the transfer due to account limits or restrictions.")
+                        self.recipient_account.balance += amount
+                        self.recipient_account.save()
+
+                        reciepient_transaction = Transaction.objects.create(
+                            user=self.recipient_account.user,
+                            account=self.recipient_account,
+                            amount=amount,
+                            transaction_type="transfer",
+                            transaction_flow="credit",
+                            status="success",
+                        )
+                    else:
+                        raise ValueError("Recipient account is invalid or does not exist.")
+
+                # self.account.save()
                 self.status = "success"
                 self.save()
+
+                # Create notification
+                create_notification(self.user, self)
+                create_notification(self.recipient_account.user, reciepient_transaction)
+                logger.info(f"Transaction {self.id} processed successfully: {self.transaction_type} of {self.amount}")
+
         except Exception as e:
+            logger.error(f"Error processing transaction {self.id}: {e}")
             self.status = "failed"
             self.save()
             raise e
@@ -91,6 +128,9 @@ class Transaction(models.Model):
 
                 self.status = "reversed"
                 self.save()
+
+                # Send transaction notification
+                # send_transaction_notification(self.user, self)
         except Exception as e:
             logger.error(f"Error reversing transaction {self.id}: {e}")
             raise ValueError(f"Transaction reversal failed: {str(e)}")  

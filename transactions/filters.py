@@ -24,11 +24,11 @@ class TransactionFilter(django_filters.FilterSet):
         return queryset
 
     def get_summary(self): 
-        queryset = self.qs  
-        total_in = queryset.filter().aggregate(Sum('amount'))['amount__sum'] or 0  
-        total_out = queryset.filter().aggregate(Sum('amount'))['amount__sum'] or 0  
+        queryset = self.qs
+        credit = queryset.filter(transaction_flow="credit").aggregate(Sum('amount'))['amount__sum'] or 0
+        debit = queryset.filter(transaction_flow="debit").aggregate(Sum('amount'))['amount__sum'] or 0 
 
         return {  
-            'In': total_in,  
-            'Out': total_out
+            'In': credit,  
+            'Out': debit
         }  

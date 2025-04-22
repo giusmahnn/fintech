@@ -10,7 +10,7 @@ def reverse_transactions(modeladmin, request, queryset):
             modeladmin.message_user(request, f"Failed to reverse transaction {transaction.id}: {str(e)}", level="error")
 
 class TransactionAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "transaction_type", "status", "amount", "date")
+    list_display = ("id", "user", "transaction_type", "transaction_flow", "status", "amount", "date")
     actions = [reverse_transactions]
 
 admin.site.register(Transaction, TransactionAdmin)

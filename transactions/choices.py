@@ -14,4 +14,9 @@ class Status(models.TextChoices):
     SUCCESS = "success", _("Success")
     FAILED = "failed", _("Failed")
     REVERSED = "reversed", _("Reversed")
-    
+
+
+
+class TransactionFlow(models.TextChoices):
+    DEBIT = "debit", _("Debit")
+    CREDIT = "credit", _("Credit")

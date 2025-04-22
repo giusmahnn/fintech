@@ -44,6 +44,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/accounts/', include('accounts.urls')),
     path('api/v1/transactions/', include('transactions.urls')),
+    path('api/v1/notifications/', include('notifications.urls')),
 ]
 
 if settings.DEBUG:
