@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'accounts',
     'transactions',
     'notifications',
+    'statement',
     
 ]
 
@@ -173,3 +174,5 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=14),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
+
+DEFAULT_EMAIL_FROM = os.getenv('DEFAULT_FROM_EMAIL')

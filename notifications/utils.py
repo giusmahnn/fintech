@@ -25,7 +25,7 @@ def send_transaction_notification(user, transaction):
             f"Best regards,\n"
             f"Your Bank Team"
         )
-        send_mail(subject, message, settings.DEFAULT_EMAIL, [user.email])
+        send_mail(subject, message, settings.DEFAULT_EMAIL_FROM, [user.email])
         logger.info(f"Transaction notification sent to {user.email}")
     except Exception as e:
             logger.error(f"Failed to send transaction notification to {user.email}: {str(e)}")
