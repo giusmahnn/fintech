@@ -1,6 +1,8 @@
 from decimal import Decimal
 from django.db import models, transaction
+from django.db.models import Sum
 from accounts.models import Account, User
+from django.utils.timezone import now
 import uuid
 import logging
 from notifications.services import create_notification
@@ -34,11 +36,30 @@ class Transaction(models.Model):
         try:
             with transaction.atomic():
                 amount = Decimal(self.amount)
+                account_type = self.account.account_type
 
+                # Enforce maximum single transfer amount
+                if amount > account_type.max_single_transfer_amount:
+                    self.status = "failed"
+                    self.save()
+                    raise ValueError("Transaction amount exceeds the maximum single transfer limit.")
+                
+                #  Enforce daily transfer limit
+                today = now().date()
+                daily_total = Transaction.objects.filter(
+                    user=self.account.user,
+                    account=self.account,
+                    date__date=today
+                ).aggregate(Sum('amount'))['amount__sum'] or Decimal(0)
+
+                if daily_total + amount > account_type.daily_transfer_limit:
+                    self.status = "failed"
+                    self.save()
+                    raise ValueError("Transaction amount exceeds the daily transfer limit.")
+                
+                # process the transaction
                 if self.transaction_type == "withdrawal":
                     if not self.account.can_withdraw(amount):
-                        self.status = "failed"
-                        self.save()
                         raise ValueError("Insufficient balance or below minimum balance.")
                     self.account.balance -= amount
                     self.transaction_flow = "debit"
@@ -70,31 +91,28 @@ class Transaction(models.Model):
                     #     status="success",  
                     # ) 
 
-                    # Credit the recipient's account
-                    if self.recipient_account:
-                        if not self.recipient_account:
-                            raise ValueError("Recipient account cannot accept the transfer due to account limits or restrictions.")
-                        self.recipient_account.balance += amount
-                        self.recipient_account.save()
+                    # Credit the recipient's account   
+                    self.recipient_account.balance += amount
+                    self.recipient_account.save()
 
-                        reciepient_transaction = Transaction.objects.create(
-                            user=self.recipient_account.user,
-                            account=self.recipient_account,
-                            amount=amount,
-                            transaction_type="transfer",
-                            transaction_flow="credit",
-                            status="success",
-                        )
-                    else:
-                        raise ValueError("Recipient account is invalid or does not exist.")
-
+                    # Log the recipient's transaction
+                    reciepient_transaction = Transaction.objects.create(
+                        user=self.recipient_account.user,
+                        account=self.recipient_account,
+                        amount=amount,
+                        transaction_type="transfer",
+                        transaction_flow="credit",
+                        status="success",
+                    )
+                    
                 # self.account.save()
                 self.status = "success"
                 self.save()
 
                 # Create notification
                 create_notification(self.user, self)
-                create_notification(self.recipient_account.user, reciepient_transaction)
+                if self.transaction_type == "transfer":
+                    create_notification(self.recipient_account.user, reciepient_transaction)
                 logger.info(f"Transaction {self.id} processed successfully: {self.transaction_type} of {self.amount}")
 
         except Exception as e:

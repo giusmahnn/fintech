@@ -165,33 +165,19 @@ class Account(models.Model):
         return account
 
 class AccountType(models.Model):
-    name = models.CharField(max_length=50, choices=AccountType.choices ,unique=True, default="Savings")  # e.g., Savings, Checking, Credit
+    name = models.CharField(max_length=50, choices=AccountType.choices, unique=True, default="Savings")  # e.g., Savings, Checking, Credit
     description = models.TextField(blank=True, null=True)
     interest_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)  # Annual interest rate
     min_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)  # Minimum balance required
-    max_balance = models.DecimalField(
-        max_digits=15, 
-        decimal_places=2, 
-        null=True, 
-        blank=True
-    )  # Maximum balance allowed; null signifies no limit (unlimited balance)
+    max_balance = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)  # Maximum balance allowed
+    daily_transfer_limit = models.DecimalField(max_digits=15, decimal_places=2, default=5000.00)  # Default daily transfer limit
+    max_single_transfer_amount = models.DecimalField(max_digits=15, decimal_places=2, default=1000.00)  # Max amount per transaction
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.name} - {self.description or 'No description'}"
     
-
-
-class AccountLimit(models.Model):
-    account_type = models.OneToOneField(AccountType, on_delete=models.CASCADE, related_name='limits')
-    daily_transfer_limit = models.DecimalField(max_digits=15, decimal_places=2, default=1000.00)  # Default daily transfer limit
-    max_single_transfer_amount = models.DecimalField(max_digits=15, decimal_places=2, default=5000.00)  # Max amount per transaction
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"Limits for {self.account_type.name}"
     
 
 class AccountUpgradeRequest(models.Model):
@@ -215,4 +201,29 @@ class AccountUpgradeRequest(models.Model):
         self.account.save()
         self.save()
 
-    
+
+
+
+
+
+
+# class AccountLimit(models.Model):
+#     account_type = models.OneToOneField(AccountType, on_delete=models.CASCADE, related_name='account_limits')
+#     daily_transfer_limit = models.DecimalField(max_digits=15, decimal_places=2, default=1000.00)  # Default daily transfer limit
+#     max_single_transfer_amount = models.DecimalField(max_digits=15, decimal_places=2, default=5000.00)  # Max amount per transaction
+#     # Removed max_balance_limit to avoid conflict with AccountType.max_balance.
+#     # Use AccountType.max_balance for maximum balance constraints.
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
+
+
+#     def save(self, *args, **kwargs):
+#         # Ensure synchronization with AccountType.max_balance
+#         if self.account_type.max_balance and self.daily_transfer_limit > self.account_type.max_balance:
+#             raise ValueError("Daily transfer limit exceeds the maximum balance allowed by the account type.")
+#         super().save(*args, **kwargs)
+
+#     def __str__(self):
+#         return (f"Limits for {self.account_type.name}: "
+#                 f"Daily Transfer Limit - {self.daily_transfer_limit}, "
+#                 f"Max Single Transfer Amount - {self.max_single_transfer_amount}")

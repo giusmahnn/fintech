@@ -3,7 +3,7 @@ from .models import (
     User,
     Account,
     AccountType,
-    AccountLimit,
+    # AccountLimit,
     AccountUpgradeRequest
 )
 # Register your models here.
@@ -35,23 +35,29 @@ class AccountAdmin(admin.ModelAdmin):
     # )  
 @admin.register(AccountType)
 class AccountTypeAdmin(admin.ModelAdmin):
-    list_display = ['name', 'description']
+    list_display = ['name', 'description', 'interest_rate', 'min_balance', 'max_balance', 'daily_transfer_limit', 'max_single_transfer_amount']
     search_fields = ['name', 'description']
-    list_filter = ['name']
+    list_filter = ['name', 'created_at', 'updated_at']
     ordering = ['name']
     fieldsets = (
-        (None, {'fields': ('name', 'description')}),
+        ('General Info', {'fields': ('name', 'description')}),
+        ('Balance Info', {'fields': ('min_balance', 'max_balance')}),
+        ('Transaction Limits', {'fields': ('daily_transfer_limit', 'max_single_transfer_amount')}),
     )
-@admin.register(AccountLimit)
-class AccountLimitAdmin(admin.ModelAdmin):
-    list_display = ['account_type', 'daily_transfer_limit', 'max_single_transfer_amount']
-    search_fields = ['account_type__name']
-    list_filter = ['account_type']
-    ordering = ['account_type']
 
-    fieldsets = (
-        (None, {'fields': ('account_type', 'daily_transfer_limit', 'max_single_transfer_amount')}),
-    )
+    
+# @admin.register(AccountLimit)
+# class AccountLimitAdmin(admin.ModelAdmin):
+#     list_display = ['account_type', 'daily_transfer_limit', 'max_single_transfer_amount']
+#     search_fields = ['account_type__name']
+#     list_filter = ['account_type']
+#     ordering = ['account_type']
+
+#     fieldsets = (
+#         (None, {'fields': ('account_type', 'daily_transfer_limit', 'max_single_transfer_amount')}),
+#     )
+
+
 @admin.register(AccountUpgradeRequest)
 class AccountUpgradeRequestAdmin(admin.ModelAdmin):
     list_display = ['get_user', 'status', 'created_at']
