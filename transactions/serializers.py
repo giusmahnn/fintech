@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Transaction
+from .models import Transaction, TransactionLimitUpgradeRequest
 
 class TransactionSerializer(serializers.ModelSerializer):
     """Serializer for transaction details"""
@@ -61,3 +61,25 @@ class TransactionFilterSerializer(serializers.ModelSerializer):
             "date",
             "transaction_type",
         ]
+
+
+
+class TransactionLimitUpgradeRequestSerializer(serializers.ModelSerializer):
+    """Serializer for transaction limit upgrade request"""
+    class Meta:
+        model = TransactionLimitUpgradeRequest
+        fields = [
+            'id',
+            'user',
+            'account',
+            'status',
+            'requested_daily_transfer_limit', 
+            'requested_max_single_transfer_amount',
+            'reason' 
+        ]
+        extra_kwargs = {
+            'id': {'read_only': True},
+            'user': {'read_only': True},
+            'account': {'read_only': True},
+            'status': {'read_only': True},
+        }

@@ -6,7 +6,7 @@ from django.utils.timezone import now
 import uuid
 import logging
 from notifications.services import create_notification
-from .choices import TransactionType, Status, TransactionFlow
+from .choices import TransactionType, Status, TransactionFlow, UpgradeStatus
 # Create your models here.
 
 
@@ -151,4 +151,42 @@ class Transaction(models.Model):
                 # send_transaction_notification(self.user, self)
         except Exception as e:
             logger.error(f"Error reversing transaction {self.id}: {e}")
-            raise ValueError(f"Transaction reversal failed: {str(e)}")  
+            raise ValueError(f"Transaction reversal failed: {str(e)}") 
+        
+
+
+class TransactionLimitUpgradeRequest(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name="limits_upgrade_requests")
+    requested_daily_transfer_limit = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    requested_max_single_transfer_amount = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    status = models.CharField(max_length=10, choices=UpgradeStatus.choices, default='pending')
+    reason = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def approve(self):
+        if self.status != "pending":
+            raise ValueError("Only pending requests can be approved")
+        try:
+            with transaction.atomic():
+                account = self.account
+                account.account_type.daily_transfer_limit = self.requested_daily_transfer_limit
+                account.account_type.max_single_transfer_amount = self.requested_max_single_transfer_amount
+                account.account_type.save()
+                self.status = "approved"
+                self.save()
+        except Exception as e:
+            logger.error(f"Error approving upgrade request {self.account}: {e}")
+            raise ValueError(f"Upgrade request approval failed: {str(e)}")
+        
+    def reject(self):
+        if self.status != "pending":
+            raise ValueError("Only pending requests can be rejected")
+        try:
+            with transaction.atomic():
+                self.status = "rejected"
+                self.save()
+        except Exception as e:
+            logger.error(f"Error rejecting upgrade request {self.account}: {e}")
+            raise ValueError(f"Upgrade request rejection failed: {str(e)}")

@@ -17,6 +17,13 @@ class Status(models.TextChoices):
 
 
 
+class UpgradeStatus(models.TextChoices):
+    PENDING = "pending", _("Pending")
+    APPROVED = "approved", _("Approved")
+    REJECTED = "rejected", _("Rejected")
+
+    
+
 class TransactionFlow(models.TextChoices):
     DEBIT = "debit", _("Debit")
     CREDIT = "credit", _("Credit")

@@ -60,16 +60,21 @@ class AccountTypeAdmin(admin.ModelAdmin):
 
 @admin.register(AccountUpgradeRequest)
 class AccountUpgradeRequestAdmin(admin.ModelAdmin):
-    list_display = ['get_user', 'status', 'created_at']
+    list_display = ['get_user', 'requested_account_type', 'reason', 'status']
     search_fields = ['account__user__phone_number', 'status']
     list_filter = ['status', 'created_at']
     ordering = ['created_at']
 
     fieldsets = (
         (None, {'fields': ('account', 'status')}),
-        ('Important dates', {'fields': ('created_at',)}),
+        ('Requested Account Type', {'fields': ('requested_account_type',)}),
+        ('Reason', {'fields': ('reason',)}),
     )
 
     def get_user(self, obj):
         return obj.account.user.phone_number
     get_user.short_description = 'User'
+
+
+
+

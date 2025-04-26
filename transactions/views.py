@@ -15,7 +15,9 @@ from transactions.serializers import (
     TransactionSerializer, 
     WithdrawalSerializer, 
     DepositSerializer,
-    TransactionFilterSerializer)
+    TransactionFilterSerializer,
+    TransactionLimitUpgradeRequestSerializer
+)
 
 logger = logging.getLogger("transactions")
 
@@ -132,3 +134,22 @@ class ReversetransactionView(APIView):
             return Response({"error": "Transaction not found."}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+
+
+class TransactionLimitUpgradeRequestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        data = {}
+        account = Account.objects.filter(user=request.user).first()
+        if not account:
+            return Response({"error": "Account not found"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = TransactionLimitUpgradeRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(account=account, user=request.user)  # Pass the account and user explicitly
+            data["message"]= "Transaction limit upgrade request submitted successfully."
+            data["request_data"] = serializer.data
+            # Optionally, you can send an email notification here
+            return Response(data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

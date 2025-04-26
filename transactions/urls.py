@@ -4,7 +4,8 @@ from transactions.views import (
     DepositMoneyView,
     WithdrawMoneyView,
     TransactionFilterView,
-    ReversetransactionView
+    ReversetransactionView,
+    TransactionLimitUpgradeRequestView,
 )
 
 
@@ -17,5 +18,6 @@ urlpatterns = [
     path('deposit/', DepositMoneyView.as_view()),
     path('withdraw/', WithdrawMoneyView.as_view()),  # TODO: Add permission checks for withdrawal amount and account balance.
     path('transaction-filter/', TransactionFilterView.as_view()),
-    path('rever-transaction/', ReversetransactionView.as_view())
+    path('reverse-transaction/', ReversetransactionView.as_view()),
+    path('transaction-limit-upgrade-request/', TransactionLimitUpgradeRequestView.as_view()),
 ]
