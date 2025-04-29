@@ -35,12 +35,12 @@ class AccountAdmin(admin.ModelAdmin):
     # )  
 @admin.register(AccountType)
 class AccountTypeAdmin(admin.ModelAdmin):
-    list_display = ['name', 'description', 'interest_rate', 'min_balance', 'max_balance', 'daily_transfer_limit', 'max_single_transfer_amount']
-    search_fields = ['name', 'description']
-    list_filter = ['name', 'created_at', 'updated_at']
-    ordering = ['name']
+    list_display = ['account', 'name', 'description', 'interest_rate', 'min_balance', 'max_balance', 'daily_transfer_limit', 'max_single_transfer_amount']
+    search_fields = ['account', 'name', 'description']
+    list_filter = ['account', 'name', 'created_at', 'updated_at']
+    ordering = ['account', 'name']
     fieldsets = (
-        ('General Info', {'fields': ('name', 'description')}),
+        ('General Info', {'fields': ('account', 'name', 'description')}),
         ('Balance Info', {'fields': ('min_balance', 'max_balance')}),
         ('Transaction Limits', {'fields': ('daily_transfer_limit', 'max_single_transfer_amount')}),
     )

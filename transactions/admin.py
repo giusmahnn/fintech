@@ -20,14 +20,16 @@ admin.site.register(Transaction, TransactionAdmin)
 class TransactionLimitUpgradeRequestAdmin(admin.ModelAdmin):
     list_display = ['user', 'account', 'requested_daily_transfer_limit', 'requested_max_single_transfer_amount', 'status']
     exclude = ['created_at', 'updated_at']
-    actions = ['approve_requests', 'reject_requests']
-
+    @admin.action(description="Approve selected requests")
     def approve_requests(self, request, queryset):
         for obj in queryset.filter(status='PENDING'):
             obj.approve()
         self.message_user(request, "Selected requests have been approved.")
 
+    @admin.action(description="Reject selected requests")
     def reject_requests(self, request, queryset):
         for obj in queryset.filter(status='PENDING'):
             obj.reject()
         self.message_user(request, "Selected requests have been rejected.")
+
+    actions = [approve_requests, reject_requests]

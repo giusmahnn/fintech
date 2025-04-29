@@ -2,12 +2,12 @@ import datetime
 import re
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
+from rbac.models import Role
 from django.utils.timezone import now
 from .choices import (
     Gender,
     AccountType,
-    UpgradeRequest,
-    Role
+    UpgradeRequest
 )
 # Create your models here.
 
@@ -44,7 +44,7 @@ class User(AbstractUser):
     email = models.EmailField(max_length=255, unique=True)
     gender = models.CharField(max_length=10, choices=Gender.choices, blank=True, null=True)
     date_joined = models.DateTimeField(default=now)
-    roles = models.CharField(max_length=9, choices=Role.choices, default='CUSTOMER')
+    roles = models.ManyToManyField(Role, related_name="users")
     last_login = models.DateTimeField(auto_now=True)
     is_verified = models.BooleanField(default=False)
     otp = models.IntegerField(blank=True, null=True)
@@ -80,14 +80,21 @@ class User(AbstractUser):
         self.otp_created_at = None
         self.save()
 
+    def has_permission(self, permission_name):
+        """Check if the user has a specific permission."""
+        for role in self.roles.all():
+            if permission_name in [perm.name for perm in role.get_all_permissions()]:
+                return True
+        return False
+
     def has_role(self, role_name):
         return self.roles.filter(name=role_name).exists()
     def is_admin(self):
-        return self.has_role('ADMIN')
+        return self.has_role('Admin')
     def is_customer(self):
-        return self.has_role('CUSTOMER')
+        return self.has_role('Customer')
     def is_support(self):
-        return self.has_role('SUPPORT')
+        return self.has_role('Support')
     
 
 class Account(models.Model):
@@ -165,6 +172,7 @@ class Account(models.Model):
         return account
 
 class AccountType(models.Model):
+    account = models.ForeignKey('Account', on_delete=models.CASCADE, related_name='account_types', null=True, blank=True)  # Link to Account
     name = models.CharField(max_length=50, choices=AccountType.choices, unique=True, default="Savings")  # e.g., Savings, Checking, Credit
     description = models.TextField(blank=True, null=True)
     interest_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)  # Annual interest rate

@@ -171,9 +171,10 @@ class TransactionLimitUpgradeRequest(models.Model):
         try:
             with transaction.atomic():
                 account = self.account
-                account.account_type.daily_transfer_limit = self.requested_daily_transfer_limit
-                account.account_type.max_single_transfer_amount = self.requested_max_single_transfer_amount
-                account.account_type.save()
+                account_type = account.account_type
+                account_type.daily_transfer_limit = self.requested_daily_transfer_limit
+                account_type.max_single_transfer_amount = self.requested_max_single_transfer_amount
+                account_type.save()
                 self.status = "approved"
                 self.save()
         except Exception as e:

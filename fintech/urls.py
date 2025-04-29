@@ -47,6 +47,7 @@ urlpatterns = [
     path('api/v1/transactions/', include('transactions.urls')),
     path('api/v1/notifications/', include('notifications.urls')),
     path('api/v1/statement/', include('statement.urls')),
+    path('api/v1/rbac/', include('rbac.urls')),
 ]
 
 if settings.DEBUG:

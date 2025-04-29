@@ -19,7 +19,7 @@ class UpgradeRequest(models.TextChoices):
     APPROVED = 'APPROVED', _('Approved')
     REJECTED = 'REJECTED', _('Rejected')
 
-class Role(models.TextChoices):
-    ADMIN = 'ADMIN', _('Admin')
-    CUSTOMER = 'CUSTOMER', _('Customer')
-    SUPPORT = 'SUPPOT', _('Support')
+# class Role(models.TextChoices):
+#     ADMIN = 'ADMIN', _('Admin')
+#     CUSTOMER = 'CUSTOMER', _('Customer')
+#     SUPPORT = 'SUPPOT', _('Support')
