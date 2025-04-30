@@ -65,15 +65,24 @@ class AccountUpgradeRequestAdmin(admin.ModelAdmin):
     list_filter = ['status', 'created_at']
     ordering = ['created_at']
 
-    fieldsets = (
-        (None, {'fields': ('account', 'status')}),
-        ('Requested Account Type', {'fields': ('requested_account_type',)}),
-        ('Reason', {'fields': ('reason',)}),
-    )
 
     def get_user(self, obj):
         return obj.account.user.phone_number
     get_user.short_description = 'User'
+
+    @admin.action(description="Approve selected requests")
+    def approve_requests(self, request, queryset):
+        for obj in queryset.filter(status='PENDING'):
+            obj.approve(request.user)
+        self.message_user(request, "Selected requests have been approved.")
+
+    @admin.action(description="Reject selected requests")
+    def reject_requests(self, request, queryset):
+        for obj in queryset.filter(status='PENDING'):
+            obj.reject(request.user)
+        self.message_user(request, "Selected requests have been rejected.")
+
+    actions = [approve_requests, reject_requests]
 
 
 

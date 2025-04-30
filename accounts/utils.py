@@ -46,7 +46,7 @@ def send_email(user_email, subject, template):
         return "Email sending failed"
     return None
 
-def validate_otp(user_email, otp, ttl_minutes=5):
+def validate_otp(user_email, otp, ttl_minutes=5): 
     try:
         user = User.objects.get(email=user_email).first()
     except User.DoesNotExist:

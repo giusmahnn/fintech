@@ -1,11 +1,13 @@
+from accounts.models import AccountUpgradeRequest
 from rbac.permissions import HasPermission
 from transactions.models import Transaction
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import status
 from rest_framework.response import Response
-from rbac.serializers import TransactionLimitUpgradeRequestSerializer
+from rbac.serializers import AccountUpgradeRequestSerializer, TransactionLimitUpgradeRequestSerializer
 from transactions.models import TransactionLimitUpgradeRequest
+from transactions.pagination import CustomPagination
 
 class ReversetransactionView(APIView):
     permission_classes = [IsAuthenticated, HasPermission]
@@ -40,7 +42,9 @@ class TransactionLimitUpgradeRequestListView(APIView):
     # permission_classes = [AllowAny]  # Allow any user to view the list of requests
     def get(self, request):
         requests = TransactionLimitUpgradeRequest.objects.all()
-        serializer = TransactionLimitUpgradeRequestSerializer(requests, many=True)
+        paginator = CustomPagination()
+        paginated_requests = paginator.paginate_queryset(requests, request)
+        serializer = TransactionLimitUpgradeRequestSerializer(paginated_requests, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -81,6 +85,64 @@ class TransactionLimitUpgradeRequestActionView(APIView):
                 upgrade_request.reject()
                 return Response({"message": "Request rejected successfully."}, status=status.HTTP_200_OK)
         except TransactionLimitUpgradeRequest.DoesNotExist:
+            return Response({"error": "Request not found."}, status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+class AccountUpgradeRequestListView(APIView):
+    """
+    List all account upgrade requests.
+    """
+    # permission_classes = [IsAuthenticated, HasPermission]
+    # required_permission = "can_view_upgrade_requests"  # Specify the required permission
+    permission_classes = [AllowAny]  # Allow any user to view the list of requests
+    def get(self, request):
+        requests = AccountUpgradeRequest.objects.all()
+        paginator = CustomPagination()
+        paginated_requests = paginator.paginate_queryset(requests, request)
+        serializer = AccountUpgradeRequestSerializer(paginated_requests, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+
+class AccountUpgradeRequestDetailView(APIView):
+    """
+    Retrieve a single account upgrade request by ID.
+    """
+    permission_classes = [IsAuthenticated, HasPermission]
+    required_permission = "can_view_upgrade_requests"  # Specify the required permission
+
+    def get(self, request, request_id):
+        try:
+            upgrade_request = AccountUpgradeRequest.objects.get(id=request_id)
+            serializer = AccountUpgradeRequestSerializer(upgrade_request)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except AccountUpgradeRequest.DoesNotExist:
+            return Response({"error": "Request not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+
+
+class AccountUpgradeRequestActionView(APIView):
+    permission_classes = [IsAuthenticated, HasPermission]
+    required_permission = "can_manage_upgrade_request"
+
+    def post(self, request, request_id):
+        action = request.data.get("action")
+        if action not in ["approve", "reject"]:
+            return Response({"error": "Invalid action. Use 'approve' or 'reject'."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            upgrade_request = AccountUpgradeRequest.objects.get(id=request_id)
+            if action == "approve":
+                upgrade_request.approve()
+                return Response({"message": "Request approved successfully."}, status=status.HTTP_200_OK)
+            elif action == "reject":
+                upgrade_request.reject()
+                return Response({"message": "Request rejected successfully."}, status=status.HTTP_200_OK)
+        except AccountUpgradeRequest.DoesNotExist:
             return Response({"error": "Request not found."}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

@@ -2,6 +2,7 @@ import datetime
 import re
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
+# from notifications.services import create_notification
 from rbac.models import Role
 from django.utils.timezone import now
 from .choices import (
@@ -193,22 +194,37 @@ class AccountUpgradeRequest(models.Model):
     requested_account_type = models.ForeignKey(AccountType, on_delete=models.CASCADE, related_name='upgrade_requests')
     status = models.CharField(max_length=10, choices=UpgradeRequest.choices, default='PENDING')
     reason = models.TextField(blank=True, null=True)
+    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="approved_requests")
+    rejected_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="rejected_requests")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"Upgrade request for {self.account.user.phone_number} to {self.requested_account_type.name}"
 
-    def approve(self):
-        if self.status != "PENDING":
-            raise ValueError("Only pending requests can be approved")
-        if self.account.account_type == self.requested_account_type:
-            raise ValueError("Account is already of the requested type")
-        self.status = "APPROVED"
-        self.account.account_type = self.requested_account_type
-        self.account.save()
-        self.save()
+    from notifications.utils import create_notification
 
+    def approve(self, approver_user):  
+        if self.status != "PENDING":  
+            raise ValueError("Only pending requests can be approved")  
+        if self.account.account_type == self.requested_account_type:  
+            raise ValueError("Account is already of the requested type")  
+        self.status = "APPROVED"  
+        self.account.account_type = self.requested_account_type  
+        self.approved_by = approver_user  
+        self.account.save()  
+        self.save()
+        # create_notification(self.account.user, f"Your account upgrade to {self.requested_account_type.name} has been approved.")
+        
+
+    def reject(self):
+        if self.status != "pending":
+            raise ValueError("Only pending requests can be rejected")
+        self.status = "rejected"
+        self.rejected_by = self.request.user
+        self.save()
+        # create_notification(self.account.user, f"Your account upgrade to {self.requested_account_type.name} has been rejected.")
+        
 
 
 

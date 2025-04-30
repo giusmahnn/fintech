@@ -1,8 +1,7 @@
 from django.core.mail import send_mail
 from django.conf import settings
 import logging
-from django.apps import apps
-Transaction = apps.get_model("transactions", "Transaction")
+
 logger = logging.getLogger(__name__)
 
 def send_transaction_notification(user, transaction):
@@ -28,15 +27,15 @@ def send_transaction_notification(user, transaction):
         send_mail(subject, message, settings.DEFAULT_EMAIL_FROM, [user.email])
         logger.info(f"Transaction notification sent to {user.email}")
     except Exception as e:
-            logger.error(f"Failed to send transaction notification to {user.email}: {str(e)}")
-
-
+        logger.error(f"Failed to send transaction notification to {user.email}: {str(e)}")
 
 
 def create_notification(user, transaction):
     """
     Create a notification for the user based on the transaction type and flow.
     """
+    from notifications.models import Notification  # Import here to avoid circular dependency
+
     try:
         if transaction.transaction_flow == "credit":
             if transaction.transaction_type == "deposit":

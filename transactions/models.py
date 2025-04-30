@@ -177,6 +177,7 @@ class TransactionLimitUpgradeRequest(models.Model):
                 account_type.save()
                 self.status = "approved"
                 self.save()
+                create_notification(self.user, f"Your upgrade request has been approved. New limits: Daily Transfer Limit: {self.requested_daily_transfer_limit}, Max Single Transfer Amount: {self.requested_max_single_transfer_amount}")
         except Exception as e:
             logger.error(f"Error approving upgrade request {self.account}: {e}")
             raise ValueError(f"Upgrade request approval failed: {str(e)}")
