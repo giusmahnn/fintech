@@ -9,19 +9,14 @@ from .models import (
 # Register your models here.
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ['phone_number', 'email', 'is_verified', 'date_joined', 'last_login']
+    list_display = ['email', 'is_verified', 'view_roles']
     search_fields = ['phone_number', 'email']
     list_filter = ['is_verified', 'date_joined', 'last_login']
     ordering = ['date_joined']
     readonly_fields = ['otp_created_at', 'otp']
-    # fieldsets = (
-    #     (None, {'fields': ('phone_number', 'email', 'password')}),
-    #     ('Personal info', {'fields': ('first_name', 'last_name')}),
-    #     ('Permissions', {'fields': ('is_verified', 'is_staff', 'is_superuser')}),
-    #     ('Important dates', {'fields': ('date_joined')}),
-    #     ('OTP', {'fields': ('otp', 'otp_created_at')}),
-    #     ('Groups', {'fields': ('groups', 'user_permissions')}),
-    # )
+    
+    def view_roles(self, obj):
+        return ", ".join([role.name for role in obj.roles.all()])
 @admin.register(Account)
 class AccountAdmin(admin.ModelAdmin):
     list_display = ['user', 'balance', 'currency', 'account_type', 'created_at', 'updated_at']

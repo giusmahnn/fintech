@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'notifications',
     'statement',
     'rbac',
+    'admin_app',
     
 ]
 

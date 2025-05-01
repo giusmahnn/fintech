@@ -48,6 +48,7 @@ urlpatterns = [
     path('api/v1/notifications/', include('notifications.urls')),
     path('api/v1/statement/', include('statement.urls')),
     path('api/v1/rbac/', include('rbac.urls')),
+    path('api/v1/admin-space/', include('admin_app.urls')),
 ]
 
 if settings.DEBUG:

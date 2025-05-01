@@ -30,6 +30,10 @@ class UserManager(BaseUserManager):
         user.is_staff = True
         user.is_superuser = True
         user.save(using=self._db)
+
+        admin_role = Role.objects.get(name="Admin")
+        user.roles.set([admin_role])
+        user.save()
         return user
 
 
