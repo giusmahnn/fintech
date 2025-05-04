@@ -91,3 +91,7 @@ def create_notification(user, transaction):
     except Exception as e:
         logger.error(f"Failed to create notification for {user.email}: {str(e)}")
         return None
+
+
+
+# def notification_request(user)

@@ -4,8 +4,9 @@ from rest_framework.views import APIView
 from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from notifications.services import send_notification
 from django.template.loader import render_to_string
-from drf_yasg.utils import swagger_auto_schema  
+from drf_yasg.utils import swagger_auto_schema 
 from drf_yasg import openapi 
 from rest_framework import status
 import logging
@@ -19,7 +20,8 @@ from .serializers import (
     UserSerializer,
     LoginSerializer,
     ProfileSerializer,
-    ResetPasswordSerializer
+    ResetPasswordSerializer,
+    AccountUpgradeRequestSerializer,
 )
 # Create your views here.
 
@@ -204,4 +206,43 @@ class ResetPasswordView(APIView):
             logger.info(f"Password reset successful for {user.email}")
             return Response({"message": "Successfully reset password"}, status=status.HTTP_200_OK)
 
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class AccountUpgradeRequestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        serializer = AccountUpgradeRequestSerializer(data=request.data, context={"request": request})
+        if serializer.is_valid():
+            account = user.accounts.first()
+            requested_account_type = serializer.validated_data.get("requested_account_type")
+
+            # Validate account upgrade eligibility
+            if account.balance < requested_account_type.max_balance:
+                return Response(
+                    {"error": "Your account balance is insufficient for this upgrade."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            serializer.save(account=account)
+            try:
+                send_notification(
+                    user=user,
+                    message=f"Your request to upgrade to {requested_account_type.name} has been submitted."
+                )
+            except Exception as e:
+                logger.error(f"Failed to send notification: {str(e)}")
+                return Response(
+                    {"error": "Failed to send notification."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+            data = {
+                "message": "Account upgrade request submitted successfully",
+                "request_data": serializer.data,
+            }
+            logger.info(f"Account upgrade request submitted by {user.email}")
+            return Response(data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

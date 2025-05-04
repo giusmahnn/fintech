@@ -105,9 +105,11 @@ class User(AbstractUser):
 class Account(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="accounts")
     account_number = models.CharField(max_length=15, unique=True, null=True, blank=True)
+    account_type = models.ForeignKey('AccountType', on_delete=models.PROTECT, related_name='accounts')
+    daily_transfer_limit = models.DecimalField(max_digits=15, decimal_places=2, default=5000.00)
+    max_single_transfer_amount = models.DecimalField(max_digits=15, decimal_places=2, default=1000.00)
     balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
-    currency = models.CharField(max_length=3, default='NGR')
-    account_type = models.ForeignKey('AccountType', on_delete=models.PROTECT, related_name='accounts') 
+    currency = models.CharField(max_length=3, default='NGR') 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -148,21 +150,21 @@ class Account(models.Model):
     def get_daily_transfer_limit(self):
         return self.account_type.limits.daily_transfer_limit
     
-    def upgrade_account_type(self, new_account_type):
-        if new_account_type.max_balance and self.balance > new_account_type.max_balance:
-            raise ValueError("Account balance exceeds the maximum limit for the new account type.")
-        self.account_type = new_account_type
-        self.save()
+    # def upgrade_account_type(self, new_account_type):
+    #     if new_account_type.max_balance and self.balance > new_account_type.max_balance:
+    #         raise ValueError("Account balance exceeds the maximum limit for the new account type.")
+    #     self.account_type = new_account_type
+    #     self.save()
 
-    def request_account_upgrade(self, new_account_type, reason=None):
-        if self.account_type.max_balance and self.balance > self.account_type.max_balance:
-            raise ValueError("Account balance exceeds the maximum limit for the new account type.")
-        upgrade_request = UpgradeRequest(
-            account=self,
-            new_account_type=new_account_type,
-            reason=reason
-        )
-        upgrade_request.save()
+    # def request_account_upgrade(self, new_account_type, reason=None):
+    #     if self.account_type.max_balance and self.balance > self.account_type.max_balance:
+    #         raise ValueError("Account balance exceeds the maximum limit for the new account type.")
+    #     upgrade_request = UpgradeRequest(
+    #         account=self,
+    #         new_account_type=new_account_type,
+    #         reason=reason
+    #     )
+    #     upgrade_request.save()
 
     @classmethod
     def create_account(cls, user, account_type, initial_balance=0.00):
@@ -177,14 +179,13 @@ class Account(models.Model):
         return account
 
 class AccountType(models.Model):
-    account = models.ForeignKey('Account', on_delete=models.CASCADE, related_name='account_types', null=True, blank=True)  # Link to Account
     name = models.CharField(max_length=50, choices=AccountType.choices, unique=True, default="Savings")  # e.g., Savings, Checking, Credit
     description = models.TextField(blank=True, null=True)
     interest_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)  # Annual interest rate
     min_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)  # Minimum balance required
     max_balance = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)  # Maximum balance allowed
     daily_transfer_limit = models.DecimalField(max_digits=15, decimal_places=2, default=5000.00)  # Default daily transfer limit
-    max_single_transfer_amount = models.DecimalField(max_digits=15, decimal_places=2, default=1000.00)  # Max amount per transaction
+    max_single_transfer_amount = models.DecimalField(max_digits=15, decimal_places=2, default=1000.00)  # Default Max amount per transaction
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -198,8 +199,12 @@ class AccountUpgradeRequest(models.Model):
     requested_account_type = models.ForeignKey(AccountType, on_delete=models.CASCADE, related_name='upgrade_requests')
     status = models.CharField(max_length=10, choices=UpgradeRequest.choices, default='PENDING')
     reason = models.TextField(blank=True, null=True)
-    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="approved_requests")
-    rejected_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="rejected_requests")
+    approved_by = models.ForeignKey(
+        'accounts.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_requests'
+    )
+    rejected_by = models.ForeignKey(
+        'accounts.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='rejected_requests'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -208,26 +213,36 @@ class AccountUpgradeRequest(models.Model):
 
     from notifications.utils import create_notification
 
-    def approve(self, approver_user):  
+    def approve(self, admin_user):  
         if self.status != "PENDING":  
             raise ValueError("Only pending requests can be approved")  
         if self.account.account_type == self.requested_account_type:  
             raise ValueError("Account is already of the requested type")  
-        self.status = "APPROVED"  
+        self.status = "approved"  
         self.account.account_type = self.requested_account_type  
-        self.approved_by = approver_user  
+        self.approved_by = admin_user  
         self.account.save()  
         self.save()
         # create_notification(self.account.user, f"Your account upgrade to {self.requested_account_type.name} has been approved.")
         
 
-    def reject(self):
+    def reject(self, admin_user):
         if self.status != "pending":
             raise ValueError("Only pending requests can be rejected")
         self.status = "rejected"
-        self.rejected_by = self.request.user
+        self.rejected_by = admin_user
         self.save()
-        # create_notification(self.account.user, f"Your account upgrade to {self.requested_account_type.name} has been rejected.")
+        
+
+    def get_actioned_by(self):
+        """
+        Return the name of the admin who approved or rejected the request.
+        """
+        if self.status == "approved" and self.approved_by:
+            return self.approved_by.get_fullname()
+        elif self.status == "rejected" and self.rejected_by:
+            return self.rejected_by.get_fullname()
+        return "Pending"
         
 
 

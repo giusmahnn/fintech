@@ -127,3 +127,48 @@ class ResetPasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError("Passwords do not match")
         return data
     
+
+
+class AccountUpgradeRequestSerializer(serializers.ModelSerializer):
+    account = serializers.StringRelatedField(
+        source='account.user',
+        read_only=True,
+    )
+    # requested_account_type = serializers.StringRelatedField(
+    #     source='requested_account_type.name',
+    # )
+    class Meta:
+        model = AccountUpgradeRequest
+        fields = ['account', 'requested_account_type', 'reason', 'status']
+        extra_kwargs = {
+            'account': {'read_only': True},
+            'account_type': {'required': True},
+            'reason': {'required': True},
+            'status': {'read_only': True},
+        }
+
+    def validate(self, data):
+        account = self.context['request'].user.accounts.first()
+        requested_account_type = data.get('requested_account_type')
+        print("validate",requested_account_type)
+
+        if account.account_type == requested_account_type:
+            raise serializers.ValidationError("You are already on this account type")
+        if not requested_account_type:
+            raise serializers.ValidationError("Requested account type is required")
+        return data
+
+    def create(self, validated_data):
+        account = self.context['request'].user.accounts.first()
+        requested_account_type = validated_data.get('requested_account_type')
+        print("create",requested_account_type)
+        reason = validated_data.get('reason')
+        if not account:
+            raise serializers.ValidationError("Account not found")
+
+        upgrade_request = AccountUpgradeRequest.objects.create(
+            account=account,
+            requested_account_type=requested_account_type,
+            reason=reason
+        )
+        return upgrade_request

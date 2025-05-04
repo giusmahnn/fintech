@@ -1,4 +1,9 @@
 from notifications.models import Notification
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 
 def create_notification(user, transaction):
     """
@@ -12,3 +17,18 @@ def create_notification(user, transaction):
         transaction_type=transaction.transaction_type,
         transaction_flow=transaction.transaction_flow,
     )
+
+
+
+def send_notification(user, message, transaction=None):
+    try:
+        notification = Notification.objects.create(
+            user=user,
+            message=message,
+            transaction=transaction,
+        )
+        logger.info(f"Notification created for {user.email}: {message}")
+        return notification
+    except Exception as e:
+        logger.error(f"Failed to create notification for {user.email}: {str(e)}")
+        return None

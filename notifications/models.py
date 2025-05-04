@@ -8,7 +8,7 @@ from django.utils import timezone
 
 class Notification(models.Model):
     user = models.ForeignKey("accounts.User", on_delete=models.CASCADE)
-    transaction = models.ForeignKey("transactions.Transaction", on_delete=models.CASCADE)
+    transaction = models.ForeignKey("transactions.Transaction", on_delete=models.CASCADE, null=True, blank=True)
     message = models.TextField()
     transaction_type = models.CharField(max_length=10, null=True, blank=True)
     transaction_flow = models.CharField(max_length=10, null=True, blank=True)
@@ -21,7 +21,7 @@ class Notification(models.Model):
         verbose_name_plural = 'Notifications'
 
     def __str__(self):
-        return f"Notification for {self.user.email} - {self.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
+        return f"Notification for {self.user.email} - {self.message} - {self.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
 
 
     def get_absolute_url(self):
