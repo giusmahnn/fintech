@@ -59,6 +59,7 @@ class AccountUpgradeRequestAdmin(admin.ModelAdmin):
         return obj.get_actioned_by()
     get_actioned_by.short_description = 'Actioned By'
 
+
     @admin.action(description="Approve selected requests")
     def approve_requests(self, request, queryset):
         for obj in queryset.filter(status='PENDING'):

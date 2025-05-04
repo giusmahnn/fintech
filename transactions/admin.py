@@ -18,18 +18,27 @@ admin.site.register(Transaction, TransactionAdmin)
 
 @admin.register(TransactionLimitUpgradeRequest)
 class TransactionLimitUpgradeRequestAdmin(admin.ModelAdmin):
-    list_display = ['user', 'account', 'requested_daily_transfer_limit', 'requested_max_single_transfer_amount', 'status']
+    list_display = ['account', 'requested_daily_transfer_limit', 'requested_max_single_transfer_amount', 'status']
     exclude = ['created_at', 'updated_at']
+
     @admin.action(description="Approve selected requests")
     def approve_requests(self, request, queryset):
         for obj in queryset.filter(status='PENDING'):
-            obj.approve()
+            try:
+                obj.approve(request.user)
+                obj.save()
+            except Exception as e:
+                self.message_user(request, f"Failed to approve request {obj.id}: {str(e)}", level="error")
         self.message_user(request, "Selected requests have been approved.")
 
     @admin.action(description="Reject selected requests")
     def reject_requests(self, request, queryset):
         for obj in queryset.filter(status='PENDING'):
-            obj.reject()
+            try:
+                obj.reject(request.user)
+                obj.save()
+            except Exception as e:
+                self.message_user(request, f"Failed to reject request {obj.id}: {str(e)}", level="error")
         self.message_user(request, "Selected requests have been rejected.")
 
     actions = [approve_requests, reject_requests]

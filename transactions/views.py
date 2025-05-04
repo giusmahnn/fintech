@@ -9,7 +9,7 @@ from rest_framework import status
 from accounts.models import Account
 from django.db.models import Sum, Q
 import logging
-
+from notifications.services import send_notification
 from transactions.models import Transaction
 from transactions.serializers import (
     TransactionSerializer, 
@@ -124,15 +124,16 @@ class TransactionLimitUpgradeRequestView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        data = {}
-        account = Account.objects.filter(user=request.user).first()
-        if not account:
-            return Response({"error": "Account not found"}, status=status.HTTP_404_NOT_FOUND)
+        user = request.user
         serializer = TransactionLimitUpgradeRequestSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(account=account, user=request.user)  # Pass the account and user explicitly
-            data["message"]= "Transaction limit upgrade request submitted successfully."
-            data["request_data"] = serializer.data
-            # Optionally, you can send an email notification here
-            return Response(data, status=status.HTTP_201_CREATED)
+            account = Account.objects.filter(user=request.user).first()
+            if not account:
+                return Response({"error": "Account not found"}, status=status.HTTP_404_NOT_FOUND)
+            serializer.save(account=account)
+            send_notification(user=user, 
+                              message="Transaction Limit Upgrade Request, Your request has been submitted successfully."
+                            )
+            logger.info(f"Transaction limit upgrade request submitted by {user.email}")
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

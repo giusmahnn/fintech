@@ -156,16 +156,16 @@ class Transaction(models.Model):
 
 
 class TransactionLimitUpgradeRequest(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name="limits_upgrade_requests")
     requested_daily_transfer_limit = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
     requested_max_single_transfer_amount = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    action_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="actioned_requests", null=True, blank=True)
     status = models.CharField(max_length=10, choices=UpgradeStatus.choices, default='pending')
     reason = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def approve(self):
+    def approve(self, admin_user):
         if self.status != "pending":
             raise ValueError("Only pending requests can be approved")
         try:
@@ -174,6 +174,7 @@ class TransactionLimitUpgradeRequest(models.Model):
                 account_type = account.account_type
                 account_type.daily_transfer_limit = self.requested_daily_transfer_limit
                 account_type.max_single_transfer_amount = self.requested_max_single_transfer_amount
+                self.action_by = admin_user
                 account_type.save()
                 self.status = "approved"
                 self.save()
@@ -182,12 +183,13 @@ class TransactionLimitUpgradeRequest(models.Model):
             logger.error(f"Error approving upgrade request {self.account}: {e}")
             raise ValueError(f"Upgrade request approval failed: {str(e)}")
         
-    def reject(self):
+    def reject(self, admin_user):
         if self.status != "pending":
             raise ValueError("Only pending requests can be rejected")
         try:
             with transaction.atomic():
                 self.status = "rejected"
+                self.action_by = admin_user
                 self.save()
         except Exception as e:
             logger.error(f"Error rejecting upgrade request {self.account}: {e}")
