@@ -47,7 +47,7 @@ class AccountTypeAdmin(admin.ModelAdmin):
 
 @admin.register(AccountUpgradeRequest)
 class AccountUpgradeRequestAdmin(admin.ModelAdmin):
-    list_display = ['get_user', 'requested_account_type', 'reason', 'status', 'get_actioned_by']
+    list_display = ['get_user', 'requested_account_type', 'reason', 'status', 'action_by']
     search_fields = ['account__user__phone_number', 'status']
     list_filter = ['status', 'created_at']
     ordering = ['created_at']
@@ -55,14 +55,10 @@ class AccountUpgradeRequestAdmin(admin.ModelAdmin):
     def get_user(self, obj):
         return obj.account.user.get_fullname()
 
-    def get_actioned_by(self, obj):
-        return obj.get_actioned_by()
-    get_actioned_by.short_description = 'Actioned By'
-
 
     @admin.action(description="Approve selected requests")
     def approve_requests(self, request, queryset):
-        for obj in queryset.filter(status='PENDING'):
+        for obj in queryset.filter(status='Pending'):
             try:
                 obj.approve(request.user)
                 obj.save()
@@ -72,7 +68,7 @@ class AccountUpgradeRequestAdmin(admin.ModelAdmin):
 
     @admin.action(description="Reject selected requests")
     def reject_requests(self, request, queryset):
-        for obj in queryset.filter(status='PENDING'):
+        for obj in queryset.filter(status='Pending'):
             try:
                 obj.reject(request.user)
                 obj.save()

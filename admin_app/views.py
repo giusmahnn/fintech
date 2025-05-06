@@ -118,10 +118,11 @@ class TransactionLimitUpgradeRequestListView(APIView):
     required_permission = "can_view_upgrade_requests"  # Specify the required permission
     # permission_classes = [AllowAny]  # Allow any user to view the list of requests
     def get(self, request):
-        requests = TransactionLimitUpgradeRequest.objects.all()
+        requests = TransactionLimitUpgradeRequest.objects.all().order_by('-created_at')
         paginator = CustomPagination()
         paginated_requests = paginator.paginate_queryset(requests, request)
         serializer = TransactionLimitUpgradeRequestSerializer(paginated_requests, many=True)
+        # print("serial", serializer.data)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -150,16 +151,17 @@ class TransactionLimitUpgradeRequestActionView(APIView):
     # permission_classes = [AllowAny]  # Allow any user to approve/reject requests
     def post(self, request, request_id):
         action = request.data.get("action")
+        user = request.user
         if action not in ["approve", "reject"]:
             return Response({"error": "Invalid action. Use 'approve' or 'reject'."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             upgrade_request = TransactionLimitUpgradeRequest.objects.get(id=request_id)
             if action == "approve":
-                upgrade_request.approve()
+                upgrade_request.approve(user)
                 return Response({"message": "Request approved successfully."}, status=status.HTTP_200_OK)
             elif action == "reject":
-                upgrade_request.reject()
+                upgrade_request.reject(user)
                 return Response({"message": "Request rejected successfully."}, status=status.HTTP_200_OK)
         except TransactionLimitUpgradeRequest.DoesNotExist:
             return Response({"error": "Request not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -177,7 +179,7 @@ class AccountUpgradeRequestListView(APIView):
     required_permission = "can_view_upgrade_requests"  # Specify the required permission
     # permission_classes = [AllowAny]  # Allow any user to view the list of requests
     def get(self, request):
-        requests = AccountUpgradeRequest.objects.all()
+        requests = AccountUpgradeRequest.objects.all().order_by('-created_at')
         paginator = CustomPagination()
         paginated_requests = paginator.paginate_queryset(requests, request)
         serializer = AccountUpgradeRequestSerializer(paginated_requests, many=True)
@@ -208,16 +210,18 @@ class AccountUpgradeRequestActionView(APIView):
 
     def post(self, request, request_id):
         action = request.data.get("action")
+        user = request.user
         if action not in ["approve", "reject"]:
             return Response({"error": "Invalid action. Use 'approve' or 'reject'."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             upgrade_request = AccountUpgradeRequest.objects.get(id=request_id)
             if action == "approve":
-                upgrade_request.approve(request.user)
+                upgrade_request.approve(user)
+                # Send email notification to the user
                 return Response({"message": "Request approved successfully."}, status=status.HTTP_200_OK)
             elif action == "reject":
-                upgrade_request.reject(request.user)
+                upgrade_request.reject(user)
                 return Response({"message": "Request rejected successfully."}, status=status.HTTP_200_OK)
         except AccountUpgradeRequest.DoesNotExist:
             return Response({"error": "Request not found."}, status=status.HTTP_404_NOT_FOUND)

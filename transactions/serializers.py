@@ -82,7 +82,6 @@ class TransactionLimitUpgradeRequestSerializer(serializers.ModelSerializer):
         ]
         extra_kwargs = {
             'id': {'read_only': True},
-            'user': {'read_only': True},
             'account': {'read_only': True},
             'status': {'read_only': True},
         }

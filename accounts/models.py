@@ -1,6 +1,8 @@
 import datetime
 import re
 from django.db import models
+from django.db import transaction
+import logging
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 # from notifications.services import create_notification
 from rbac.models import Role
@@ -12,6 +14,7 @@ from .choices import (
 )
 # Create your models here.
 
+logger = logging.getLogger(__name__)
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -197,76 +200,56 @@ class AccountType(models.Model):
 class AccountUpgradeRequest(models.Model):
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='upgrade_requests')
     requested_account_type = models.ForeignKey(AccountType, on_delete=models.CASCADE, related_name='upgrade_requests')
-    status = models.CharField(max_length=10, choices=UpgradeRequest.choices, default='PENDING')
+    status = models.CharField(max_length=10, choices=UpgradeRequest.choices, default=UpgradeRequest.PENDING)  # pending, approved, rejected
     reason = models.TextField(blank=True, null=True)
-    approved_by = models.ForeignKey(
-        'accounts.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_requests'
-    )
-    rejected_by = models.ForeignKey(
-        'accounts.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='rejected_requests'
-    )
+    action_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="action_request", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"Upgrade request for {self.account.user.phone_number} to {self.requested_account_type.name}"
 
-    from notifications.utils import create_notification
-
     def approve(self, admin_user):  
-        if self.status != "PENDING":  
-            raise ValueError("Only pending requests can be approved")  
+        if self.status != UpgradeRequest.PENDING:
+            raise ValueError("Only pending requests can be approved")
+        if self.status == UpgradeRequest.REJECTED:
+            raise ValueError("Rejected requests cannot be approved")
         if self.account.account_type == self.requested_account_type:  
             raise ValueError("Account is already of the requested type")  
-        self.status = "approved"  
-        self.account.account_type = self.requested_account_type  
-        self.approved_by = admin_user  
-        self.account.save()  
-        self.save()
-        # create_notification(self.account.user, f"Your account upgrade to {self.requested_account_type.name} has been approved.")
-        
+        try:
+            with transaction.atomic():  
+                self.account.account_type = self.requested_account_type  
+                self.action_by = admin_user
+                self.status = UpgradeRequest.APPROVED    
+                self.account.save()  
+                self.save()
+        except Exception as e:
+            logger.error(f"Error approving upgrade request {self.account}: {e}")
+            raise ValueError(f"Upgrade request approval failed: {str(e)}")
+
 
     def reject(self, admin_user):
-        if self.status != "pending":
-            raise ValueError("Only pending requests can be rejected")
-        self.status = "rejected"
-        self.rejected_by = admin_user
-        self.save()
+        if self.status != UpgradeRequest.PENDING:
+            raise ValueError("Only pending requests can be rejected.")
+        try:
+            with transaction.atomic():
+                self.status = UpgradeRequest.REJECTED
+                self.action_by = admin_user  # Assign the admin user
+                self.save()
+        except Exception as e:
+            logger.error(f"Error rejecting upgrade request {self.account}: {e}")
+            raise ValueError(f"Upgrade request rejection failed: {str(e)}")
+
         
 
-    def get_actioned_by(self):
-        """
-        Return the name of the admin who approved or rejected the request.
-        """
-        if self.status == "approved" and self.approved_by:
-            return self.approved_by.get_fullname()
-        elif self.status == "rejected" and self.rejected_by:
-            return self.rejected_by.get_fullname()
-        return "Pending"
+    # def get_actioned_by(self):
+    #     """
+    #     Return the name of the admin who approved or rejected the request.
+    #     """
+    #     if self.status == "approved" and self.approved_by:
+    #         return self.approved_by.get_fullname()
+    #     elif self.status == "rejected" and self.rejected_by:
+    #         return self.rejected_by.get_fullname()
+    #     return "Pending"
         
 
-
-
-
-
-
-# class AccountLimit(models.Model):
-#     account_type = models.OneToOneField(AccountType, on_delete=models.CASCADE, related_name='account_limits')
-#     daily_transfer_limit = models.DecimalField(max_digits=15, decimal_places=2, default=1000.00)  # Default daily transfer limit
-#     max_single_transfer_amount = models.DecimalField(max_digits=15, decimal_places=2, default=5000.00)  # Max amount per transaction
-#     # Removed max_balance_limit to avoid conflict with AccountType.max_balance.
-#     # Use AccountType.max_balance for maximum balance constraints.
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-
-
-#     def save(self, *args, **kwargs):
-#         # Ensure synchronization with AccountType.max_balance
-#         if self.account_type.max_balance and self.daily_transfer_limit > self.account_type.max_balance:
-#             raise ValueError("Daily transfer limit exceeds the maximum balance allowed by the account type.")
-#         super().save(*args, **kwargs)
-
-#     def __str__(self):
-#         return (f"Limits for {self.account_type.name}: "
-#                 f"Daily Transfer Limit - {self.daily_transfer_limit}, "
-#                 f"Max Single Transfer Amount - {self.max_single_transfer_amount}")

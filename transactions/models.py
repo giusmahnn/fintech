@@ -160,37 +160,38 @@ class TransactionLimitUpgradeRequest(models.Model):
     requested_daily_transfer_limit = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
     requested_max_single_transfer_amount = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
     action_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="actioned_requests", null=True, blank=True)
-    status = models.CharField(max_length=10, choices=UpgradeStatus.choices, default='pending')
+    status = models.CharField(max_length=10, choices=UpgradeStatus.choices, default=UpgradeStatus.PENDING)
     reason = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def approve(self, admin_user):
-        if self.status != "pending":
+        if self.status != UpgradeStatus.PENDING:
             raise ValueError("Only pending requests can be approved")
         try:
             with transaction.atomic():
                 account = self.account
-                account_type = account.account_type
-                account_type.daily_transfer_limit = self.requested_daily_transfer_limit
-                account_type.max_single_transfer_amount = self.requested_max_single_transfer_amount
+                # account_type = account.account_type
+                account.daily_transfer_limit = self.requested_daily_transfer_limit
+                account.max_single_transfer_amount = self.requested_max_single_transfer_amount
+                account.save()
                 self.action_by = admin_user
-                account_type.save()
-                self.status = "approved"
-                self.save()
-                create_notification(self.user, f"Your upgrade request has been approved. New limits: Daily Transfer Limit: {self.requested_daily_transfer_limit}, Max Single Transfer Amount: {self.requested_max_single_transfer_amount}")
+                self.status = UpgradeStatus.APPROVED  
+                self.save()  
         except Exception as e:
             logger.error(f"Error approving upgrade request {self.account}: {e}")
             raise ValueError(f"Upgrade request approval failed: {str(e)}")
+
         
     def reject(self, admin_user):
-        if self.status != "pending":
+        if self.status != UpgradeStatus.PENDING:
             raise ValueError("Only pending requests can be rejected")
         try:
             with transaction.atomic():
-                self.status = "rejected"
+                self.status = UpgradeStatus.REJECTED
                 self.action_by = admin_user
                 self.save()
+                
         except Exception as e:
             logger.error(f"Error rejecting upgrade request {self.account}: {e}")
             raise ValueError(f"Upgrade request rejection failed: {str(e)}")
