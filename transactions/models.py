@@ -5,7 +5,8 @@ from accounts.models import Account, User
 from django.utils.timezone import now
 import uuid
 import logging
-from notifications.services import create_notification
+from notifications.services import create_notification, send_notification
+from transactions.utils import FraudDetection
 from .choices import TransactionType, Status, TransactionFlow, UpgradeStatus
 # Create your models here.
 
@@ -22,7 +23,7 @@ class Transaction(models.Model):
     narration = models.TextField(blank=True, null=True)
     amount = models.DecimalField(max_digits=15, decimal_places=2)
     transaction_type = models.CharField(max_length=10, choices=TransactionType.choices)
-    status = models.CharField(max_length=10, choices=Status.choices, default="pending")
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
     transaction_flow = models.CharField(max_length=10, choices=TransactionFlow.choices, default="debit")
     date = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -38,24 +39,28 @@ class Transaction(models.Model):
                 amount = Decimal(self.amount)
                 account_type = self.account.account_type
 
-                # Enforce maximum single transfer amount
-                if amount > account_type.max_single_transfer_amount:
-                    self.status = "failed"
-                    self.save()
-                    raise ValueError("Transaction amount exceeds the maximum single transfer limit.")
-                
-                #  Enforce daily transfer limit
-                today = now().date()
-                daily_total = Transaction.objects.filter(
-                    user=self.account.user,
-                    account=self.account,
-                    date__date=today
-                ).aggregate(Sum('amount'))['amount__sum'] or Decimal(0)
-
-                if daily_total + amount > account_type.daily_transfer_limit:
-                    self.status = "failed"
-                    self.save()
-                    raise ValueError("Transaction amount exceeds the daily transfer limit.")
+                # Run fraud detection
+                fraud_detection = FraudDetection(self)
+                fraud_result = fraud_detection.run_checks()
+                if fraud_result:
+                    self.account.flagged = True
+                    self.status = "flagged"
+                    self.account.save()
+                    logger.warning(f"Transaction {self.id} flagged: {fraud_result}")
+                    # Log the flagged transaction
+                    FlaggedTransaction.objects.create(
+                        transaction=self,
+                        reason=fraud_result,
+                        flagged_at=now(),
+                        status="pending",
+                    )
+                    # Notify admins
+                    send_notification(
+                        user=self.user,
+                        message=f"Transaction flagged: {fraud_result}",
+                        transaction=self
+                    )
+                    return
                 
                 # process the transaction
                 if self.transaction_type == "withdrawal":
@@ -80,16 +85,6 @@ class Transaction(models.Model):
                     self.account.balance -= amount
                     self.transaction_flow = "debit"  
                     self.account.save()
-
-                    # Log the sender's transaction  
-                    # Transaction.objects.create(  
-                    #     user=self.user,  
-                    #     account=self.account,  
-                    #     amount=amount,  
-                    #     transaction_type="transfer",  
-                    #     transaction_flow="debit",  # This should be a debit for the sender  
-                    #     status="success",  
-                    # ) 
 
                     # Credit the recipient's account   
                     self.recipient_account.balance += amount
@@ -195,3 +190,14 @@ class TransactionLimitUpgradeRequest(models.Model):
         except Exception as e:
             logger.error(f"Error rejecting upgrade request {self.account}: {e}")
             raise ValueError(f"Upgrade request rejection failed: {str(e)}")
+        
+
+
+class FlaggedTransaction(models.Model):
+    transaction = models.OneToOneField(Transaction, on_delete=models.CASCADE, related_name="flagged_transaction")
+    reason = models.TextField()
+    flagged_at = models.DateTimeField(auto_now_add=True)
+    reviewed = models.BooleanField(default=False)
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviewed_flagged_transactions")
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default="pending")

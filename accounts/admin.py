@@ -22,7 +22,7 @@ class UserAdmin(admin.ModelAdmin):
         return obj.get_fullname()
 @admin.register(Account)
 class AccountAdmin(admin.ModelAdmin):
-    list_display = ['user', 'balance', 'currency', 'account_type', 'created_at', 'updated_at']
+    list_display = ['user', 'balance', 'account_type', 'flagged']
     search_fields = ['user']
     list_filter = ['account_type', 'created_at', 'updated_at']
     ordering = ['created_at']

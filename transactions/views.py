@@ -71,6 +71,8 @@ class TransferMoneyView(APIView):
             return Response({"error": "Recipient account number is required"}, status=status.HTTP_400_BAD_REQUEST)
         sender_account = get_object_or_404(Account, user=request.user)
         recipient_account = get_object_or_404(Account, account_number=recipient_account_number)
+        if sender_account.flagged:
+            return Response({"Error": "Please contact support immediately..."}, status=status.HTTP_400_BAD_REQUEST)
         transaction = Transaction.objects.create(
             user=request.user,
             account=sender_account,

@@ -2,32 +2,31 @@ from django.core.mail import send_mail
 from django.conf import settings
 import logging
 
+from accounts.models import User
+
 logger = logging.getLogger(__name__)
 
-def send_transaction_notification(user, transaction):
+def send_fraud_alert(transaction, reason):
     """
-    Send a transaction notification to the user via email.
+    Notify admins about a flagged transaction.
     """
     try:
-        subject = f"Transaction ALERT[{transaction.transaction_flow.capitalize()}:{transaction.account.balance}]"
+        subject = f"Fraud Alert: Transaction {transaction.id} Flagged"
         message = (
-            f"Dear {user.get_full_name()},\n\n"
-            f"Your recent transaction has been processed successfully.\n\n"
+            f"A transaction has been flagged for potential fraud.\n\n"
+            f"Reason: {reason}\n"
             f"Transaction Details:\n"
-            f"Type: {transaction.transaction_type.capitalize()}\n"
-            f"Flow: {transaction.transaction_flow.capitalize()}\n"
+            f"Type: {transaction.transaction_type}\n"
             f"Amount: {transaction.amount}\n"
-            f"Status: {transaction.status.capitalize()}\n"
-            f"Date: {transaction.date.strftime('%Y-%m-%d %H:%M:%S')}\n"
-            f"Account Balance: {transaction.account.balance}\n\n"
-            f"Thank you for banking with us.\n\n"
-            f"Best regards,\n"
-            f"Your Bank Team"
+            f"Account: {transaction.account.account_number}\n"
+            f"Date: {transaction.date}\n"
         )
-        send_mail(subject, message, settings.DEFAULT_EMAIL_FROM, [user.email])
-        logger.info(f"Transaction notification sent to {user.email}")
+        # Send email to all admins
+        admin_emails = [admin.email for admin in User.objects.filter(is_staff=True)]
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, admin_emails)
+        logger.info(f"Fraud alert sent for transaction {transaction.id}")
     except Exception as e:
-        logger.error(f"Failed to send transaction notification to {user.email}: {str(e)}")
+        logger.error(f"Failed to send fraud alert for transaction {transaction.id}: {e}")
 
 
 def create_notification(user, transaction):

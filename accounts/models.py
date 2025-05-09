@@ -111,6 +111,7 @@ class Account(models.Model):
     account_type = models.ForeignKey('AccountType', on_delete=models.PROTECT, related_name='accounts')
     daily_transfer_limit = models.DecimalField(max_digits=15, decimal_places=2, default=5000.00)
     max_single_transfer_amount = models.DecimalField(max_digits=15, decimal_places=2, default=1000.00)
+    flagged = models.BooleanField(default=False)
     balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
     currency = models.CharField(max_length=3, default='NGR') 
     created_at = models.DateTimeField(auto_now_add=True)

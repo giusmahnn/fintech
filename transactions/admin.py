@@ -1,5 +1,6 @@
 from django.contrib import admin
-from transactions.models import Transaction, TransactionLimitUpgradeRequest
+from django.utils.timezone import now
+from transactions.models import Transaction, TransactionLimitUpgradeRequest, FlaggedTransaction
 
 @admin.action(description="Reverse selected transactions")
 def reverse_transactions(modeladmin, request, queryset):
@@ -42,3 +43,29 @@ class TransactionLimitUpgradeRequestAdmin(admin.ModelAdmin):
         self.message_user(request, "Selected requests have been rejected.")
 
     actions = [approve_requests, reject_requests]
+
+
+
+
+@admin.register(FlaggedTransaction)
+class FlaggedTransactionAdmin(admin.ModelAdmin):
+    list_display = ["transaction", "reason", "flagged_at", "reviewed", "status"]
+    actions = ["approve_transactions", "reject_transactions"]
+
+    @admin.action(description="Approve selected transactions")
+    def approve_transactions(self, request, queryset):
+        for obj in queryset.filter(reviewed=False):
+            obj.status = "approved"
+            obj.reviewed = True
+            obj.reviewed_by = request.user
+            obj.reviewed_at = now()
+            obj.save()
+
+    @admin.action(description="Reject selected transactions")
+    def reject_transactions(self, request, queryset):
+        for obj in queryset.filter(reviewed=False):
+            obj.status = "rejected"
+            obj.reviewed = True
+            obj.reviewed_by = request.user
+            obj.reviewed_at = now()
+            obj.save()

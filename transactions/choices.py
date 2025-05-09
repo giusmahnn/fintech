@@ -14,6 +14,7 @@ class Status(models.TextChoices):
     SUCCESS = "success", _("Success")
     FAILED = "failed", _("Failed")
     REVERSED = "reversed", _("Reversed")
+    FLAGGED = "flagged", _("Flagged")
 
 
 
