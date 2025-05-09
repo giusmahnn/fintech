@@ -7,7 +7,7 @@ import uuid
 import logging
 from notifications.services import create_notification, send_notification
 from transactions.utils import FraudDetection
-from .choices import TransactionType, Status, TransactionFlow, UpgradeStatus
+from .choices import FlaggedStatus, TransactionType, Status, TransactionFlow, UpgradeStatus
 # Create your models here.
 
 
@@ -52,7 +52,7 @@ class Transaction(models.Model):
                         transaction=self,
                         reason=fraud_result,
                         flagged_at=now(),
-                        status="pending",
+                        status="flagged",
                     )
                     # Notify admins
                     send_notification(
@@ -200,4 +200,22 @@ class FlaggedTransaction(models.Model):
     reviewed = models.BooleanField(default=False)
     reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviewed_flagged_transactions")
     reviewed_at = models.DateTimeField(null=True, blank=True)
-    status = models.CharField(max_length=10, choices=Status.choices, default="pending")
+    status = models.CharField(max_length=10, choices=FlaggedStatus.choices, default=FlaggedStatus.FLAGGED)
+
+    def __str__(self):
+        return f"Flagged Transaction {self.transaction.id} - {self.reason} - {self.status}"
+    
+    def review(self, admin_user, status):
+        if self.reviewed:
+            raise ValueError("Transaction already reviewed")
+        try:
+            with transaction.atomic():
+                self.reviewed = True
+                self.reviewed_by = admin_user
+                self.reviewed_at = now()
+                self.status = status
+                self.save()
+                
+        except Exception as e:
+            logger.error(f"Error reviewing flagged transaction {self.transaction.id}: {e}")
+            raise ValueError(f"Flagged transaction review failed: {str(e)}")

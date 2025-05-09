@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from accounts.models import AccountUpgradeRequest, User
 from accounts.utils import validate_password
-from transactions.models import TransactionLimitUpgradeRequest
+from transactions.models import FlaggedTransaction, TransactionLimitUpgradeRequest
+from transactions.serializers import TransactionSerializer
 
 
 
@@ -144,3 +145,27 @@ class AccountUpgradeRequestSerializer(serializers.ModelSerializer):
         return data
 
     
+
+
+class FlaggedTransactionSerializer(serializers.ModelSerializer):
+    # transaction = TransactionSerializer(read_only=True)
+
+    class Meta:
+        model = FlaggedTransaction
+        fields = [
+            "id",
+            "transaction",
+            "reason",
+            "flagged_at",
+            "reviewed",
+            "reviewed_by",
+            "reviewed_at",
+            "status",
+        ]
+        read_only_fields = ["flagged_at", "reviewed_at", "status"]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # data["transaction"] = TransactionSerializer(instance.transaction).data
+        data["reviewed_by"] = instance.reviewed_by.get_fullname() if instance.reviewed_by else None
+        return data

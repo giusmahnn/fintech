@@ -10,13 +10,14 @@ from django.template.loader import render_to_string
 from rbac.models import Role
 from django.db import transaction
 from rbac.permissions import HasPermission
-from transactions.models import Transaction, TransactionLimitUpgradeRequest
+from transactions.models import FlaggedTransaction, Transaction, TransactionLimitUpgradeRequest
 from transactions.pagination import CustomPagination
 from admin_app.serializers import (
     CreateAdminSerializer, 
     AdminLoginSerializer, 
     TransactionLimitUpgradeRequestSerializer,
-    AccountUpgradeRequestSerializer
+    AccountUpgradeRequestSerializer,
+    FlaggedTransactionSerializer
 )
 
 
@@ -225,5 +226,61 @@ class AccountUpgradeRequestActionView(APIView):
                 return Response({"message": "Request rejected successfully."}, status=status.HTTP_200_OK)
         except AccountUpgradeRequest.DoesNotExist:
             return Response({"error": "Request not found."}, status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class FlaggedAccountListView(APIView):
+    """
+    List all account upgrade requests.
+    """
+    permission_classes = [HasPermission]
+    required_permission = "can_view_upgrade_requests"  # Specify the required permission
+    # permission_classes = [AllowAny]  # Allow any user to view the list of requests
+    def get(self, request):
+        requests = FlaggedTransaction.objects.all().order_by('-flagged_at')
+        paginator = CustomPagination()
+        paginated_requests = paginator.paginate_queryset(requests, request)
+        serializer = FlaggedTransactionSerializer(paginated_requests, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+class FlaggedAccountDetailView(APIView):
+    """
+    Retrieve a single account upgrade request by ID.
+    """
+    permission_classes = [HasPermission]
+    required_permission = "can_view_upgrade_requests"  # Specify the required permission
+
+    def get(self, request, request_id):
+        try:
+            upgrade_request = FlaggedTransaction.objects.get(id=request_id)
+            serializer = FlaggedTransactionSerializer(upgrade_request)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except FlaggedTransaction.DoesNotExist:
+            return Response({"error": "Request not found."}, status=status.HTTP_404_NOT_FOUND)
+
+
+
+class FlaggedAccountActionView(APIView):
+    permission_classes = [HasPermission]
+    required_permission = "can_approve_limit_upgrade"
+
+    def post(self, request, request_id):
+        status_value = request.data.get("status_value")
+        if status_value not in ["unflagged", "rejected"]:
+            return Response({"error": "Invalid status value. Use 'approved' or 'rejected'."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            flagged = FlaggedTransaction.objects.get(id=request_id)
+            flagged.review(request.user, status_value)
+            if status_value == "unflagged":
+                flagged.transaction.account.flagged = False
+                flagged.transaction.account.save()
+                
+            return Response({"message": "Flagged transaction reviewed successfully."}, status=status.HTTP_200_OK)
+        except FlaggedTransaction.DoesNotExist:
+            return Response({"error": "Flagged transaction not found."}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

@@ -8,9 +8,11 @@ from admin_app.views import (
                             TransactionLimitUpgradeRequestListView,
                             AccountUpgradeRequestListView,
                             AccountUpgradeRequestActionView,
-                            AccountUpgradeRequestDetailView
+                            AccountUpgradeRequestDetailView,
+                            FlaggedAccountListView,
+                            FlaggedAccountDetailView,
+                            FlaggedAccountActionView
 )
-
 
 urlpatterns = [
     path('admin/login/', AdminLoginView.as_view(), name='admin_login'),
@@ -22,4 +24,7 @@ urlpatterns = [
     path('account-upgrade-requests/', AccountUpgradeRequestListView.as_view(), name='account-upgrade-request-list'),
     path('account-upgrade-requests/<int:request_id>/', AccountUpgradeRequestDetailView.as_view(), name='account-upgrade-request-detail'),
     path('account-upgrade-requests/<int:request_id>/action/', AccountUpgradeRequestActionView.as_view(), name='account-upgrade-request-action'),
+    path('flagged/', FlaggedAccountListView.as_view(), name='flagged-transactions'),
+    path('flagged/<int:request_id>/', FlaggedAccountDetailView.as_view(), name='flagged-transaction-detail'),
+    path('flagged/<int:request_id>/review/', FlaggedAccountActionView.as_view(), name='review-flagged'),
 ]

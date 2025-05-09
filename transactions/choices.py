@@ -18,6 +18,12 @@ class Status(models.TextChoices):
 
 
 
+class FlaggedStatus(models.TextChoices):
+    FLAGGED = "flagged", _("Flagged")
+    UNFLAGGED = "unflagged", _("Unflagged")
+    REJECTED = "rejected", _("Rejected")
+
+
 class UpgradeStatus(models.TextChoices):
     PENDING = "pending", _("Pending")
     APPROVED = "approved", _("Approved")
