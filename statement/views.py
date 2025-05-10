@@ -8,10 +8,14 @@ from rest_framework import status
 from django.http import HttpResponse
 from transactions.models import Transaction
 from accounts.models import Account
+from accounts.utils import log_audit
 from statement.utils import send_statement_email
 import datetime
+import logging
 from transactions.pagination import CustomPagination
 from transactions.serializers import TransactionSerializer  # Create a serializer for transactions
+
+logger = logging.getLogger(__name__)
 
 class AccountStatementView(APIView):
     permission_classes = [IsAuthenticated]
@@ -82,6 +86,7 @@ class AccountStatementEmailView(APIView):
         try:
             account = Account.objects.get(user=user)
         except Account.DoesNotExist:
+            logger.error(f"Account not found for user {user.email}")
             return Response({"error": "No account found for the authenticated user."}, status=status.HTTP_404_NOT_FOUND)
 
         # Filter transactions
@@ -114,6 +119,12 @@ class AccountStatementEmailView(APIView):
                 html_content=html_string,
                 pdf_bytes=pdf
             )
+            logger.info(f"Account statement emailed to {account.user.email} for the period {start_date} to {end_date}")
+            log_audit(
+                user=user,
+                action="EMAIL_STATEMENT",
+                details=f"Account statement emailed to {account.user.email} for the period {start_date} to {end_date}"
+            )
         except Exception as e:
             return Response({"error": f"Failed to send email: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -139,6 +150,7 @@ class AccountStatementDownloadView(APIView):
         try:
             account = Account.objects.get(user=user)
         except Account.DoesNotExist:
+            logger.error(f"Account not found for user {user.email}")
             return Response({"error": "No account found for the authenticated user."}, status=status.HTTP_404_NOT_FOUND)
 
         transactions = Transaction.objects.filter(
@@ -168,6 +180,12 @@ class AccountStatementDownloadView(APIView):
             subject=subject,
             html_content=html_string,
             pdf_bytes=pdf
+        )
+        logger.info(f"Account statement emailed to {account.user.email} for the period {start_date} to {end_date}")
+        log_audit(
+            user=user,
+            action="EMAIL_STATEMENT",
+            details=f"Account statement emailed to {account.user.email} for the period {start_date} to {end_date}"
         )
 
         return response

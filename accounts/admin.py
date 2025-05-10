@@ -4,7 +4,8 @@ from .models import (
     Account,
     AccountType,
     # AccountLimit,
-    AccountUpgradeRequest
+    AccountUpgradeRequest,
+    AuditLog
 )
 # Register your models here.
 @admin.register(User)
@@ -77,3 +78,17 @@ class AccountUpgradeRequestAdmin(admin.ModelAdmin):
         self.message_user(request, "Selected requests have been rejected.")
 
     actions = [approve_requests, reject_requests]
+
+
+
+@admin.register(AuditLog)
+class AuditLogAdmin(admin.ModelAdmin):
+    list_display = ['user', 'action', 'timestamp']
+    search_fields = ['user__phone_number', 'action']
+    list_filter = ['action', 'timestamp']
+    ordering = ['-timestamp']
+    readonly_fields = ['user', 'action', 'timestamp']
+    fieldsets = (
+        ('User Info', {'fields': ('user',)}),
+        ('Action Info', {'fields': ('action', 'timestamp')}),
+    )

@@ -3,7 +3,7 @@ from django.forms import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
-from .models import User
+from .models import AuditLog, User
 import datetime
 import logging
 import random
@@ -86,3 +86,13 @@ def normalize_number(number):
     elif len(number) != 11:
         raise ValueError("Phone number must be 11 digits")
     return number
+
+
+def log_audit(user, action, ip_address=None, metadata=None):
+    """Log an action to the AuditLog model."""
+    AuditLog.objects.create(
+        user=user,
+        action=action,
+        ip_address=ip_address,
+        metadata=metadata,
+    )

@@ -12,6 +12,7 @@ from rest_framework import status
 import logging
 from .utils import (
     generate_otp,
+    log_audit,
     send_email,
     jwt_auth,
 )
@@ -73,22 +74,53 @@ class VerifyEmailAddress(APIView):
 class LoginUsersView(APIView):
     permission_classes = [AllowAny]
 
+    # def post(self, request):
+    #     data = {}
+    #     serializer = LoginSerializer(data=request.data)
+    #     if serializer.is_valid():
+    #         user = serializer.validated_data
+    #         context = {
+    #             "name": user.get_fullname(),
+    #             "last_login": user.last_login,
+    #         }
+    #         html_message = render_to_string('accounts/login_email.html', context)
+    #         send_email(user.email, 'Login Notification', html_message)
+    #         data['Message'] = 'successfully logged in'
+    #         data["User data"] = UserSerializer(user).data
+    #         data["JWT_Token"] = jwt_auth(user)
+    #         return Response(data, status=status.HTTP_200_OK)
+    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     def post(self, request):
-        data = {}
-        serializer = LoginSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.validated_data
-            context = {
-                "name": user.get_fullname(),
-                "last_login": user.last_login,
-            }
-            html_message = render_to_string('accounts/login_email.html', context)
-            send_email(user.email, 'Login Notification', html_message)
-            data['Message'] = 'successfully logged in'
-            data["User data"] = UserSerializer(user).data
-            data["JWT_Token"] = jwt_auth(user)
-            return Response(data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        account_number = request.data.get("account_number")
+        password = request.data.get("password")
+        try:
+            account = Account.objects.get(account_number=account_number)
+            user = account.user
+            if not user.check_password(password):
+                logger.warning(f"Failed login attempt for email: {account_number}")
+                log_audit(
+                    user=None,
+                    action="Failed Login Attempt",
+                    ip_address=request.META.get("REMOTE_ADDR"),
+                    metadata={"account_number": account_number},
+                )
+                return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+
+            # Log successful login
+            logger.info(f"User {account_number} logged in successfully")
+            log_audit(
+                user=user,
+                action="Login",
+                ip_address=request.META.get("REMOTE_ADDR"),
+                metadata={"account_number": account_number},
+            )
+            # Generate JWT token
+            token = jwt_auth(user)
+            return Response({"message": "Login successful", "token": token}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            logger.error(f"Login failed: User with email {account_number} not found")
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
     
 
 class ProfileView(APIView):
@@ -136,6 +168,12 @@ class InitializePasswordView(APIView):
         email = request.data.get("email")
         if not email:
             logger.error("Email is required")
+            log_audit(
+                user=None,
+                action="Password Reset Attempt",
+                ip_address=request.META.get("REMOTE_ADDR"),
+                metadata={"email": email},
+            )
             return Response({"message":"Email is required"}, status=status.HTTP_400_BAD_REQUEST)
         try:
             user = User.objects.get(email=email)
@@ -150,6 +188,12 @@ class InitializePasswordView(APIView):
             send_email(user.email, 'Reset Your Password', html_message)
             data['Message'] = 'successfully sent otp to reset password'
             logger.info(f'reset password otp sent to {email}')
+            log_audit(
+                user=user,
+                action="Password Reset OTP Sent",
+                ip_address=request.META.get("REMOTE_ADDR"),
+                metadata={"email": email},
+            )
             return Response(data, status=status.HTTP_200_OK)
         except User.DoesNotExist:
             logger.error("User not found")
@@ -191,6 +235,12 @@ class ResetPasswordView(APIView):
                 user = User.objects.get(otp=otp)
             except User.DoesNotExist:
                 logger.error(f"Password reset failed: No user found for OTP {otp}")
+                log_audit(
+                    user=None,
+                    action="Password Reset Attempt",
+                    ip_address=request.META.get("REMOTE_ADDR"),
+                    metadata={"otp": otp},
+                )
                 return Response({"error": "Invalid OTP or user not found."}, status=status.HTTP_404_NOT_FOUND)
 
             user.set_password(data["password"])
@@ -204,6 +254,12 @@ class ResetPasswordView(APIView):
             send_email(user.email, "Password Reset Successful", html_message)
 
             logger.info(f"Password reset successful for {user.email}")
+            log_audit(
+                user=user,
+                action="Password Reset",
+                ip_address=request.META.get("REMOTE_ADDR"),
+                metadata={"email": user.email},
+            )
             return Response({"message": "Successfully reset password"}, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -222,6 +278,13 @@ class AccountUpgradeRequestView(APIView):
 
             # Validate account upgrade eligibility
             if account.balance < requested_account_type.max_balance:
+                logger.warning(f"Account upgrade request failed for {user.email}: Insufficient balance.")
+                log_audit(
+                    user=user,
+                    action="Account Upgrade Request Failed - Insufficient Balance",
+                    ip_address=request.META.get("REMOTE_ADDR"),
+                    metadata={"requested_account_type": requested_account_type.name},
+                )
                 return Response(
                     {"error": "Your account balance is insufficient for this upgrade."},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -244,5 +307,11 @@ class AccountUpgradeRequestView(APIView):
                 "request_data": serializer.data,
             }
             logger.info(f"Account upgrade request submitted by {user.email}")
+            log_audit(
+                user=user,
+                action="Account Upgrade Request",
+                ip_address=request.META.get("REMOTE_ADDR"),
+                metadata={"requested_account_type": requested_account_type.name},
+            )
             return Response(data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

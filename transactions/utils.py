@@ -15,21 +15,17 @@ class FraudDetection:
         self.transaction = transaction
 
     def check_limits(self):
-        account_type = self.transaction.account.account_type
-        if self.transaction.amount > account_type.max_single_transfer_amount:
+        account = self.transaction.account
+
+        if self.transaction.transaction_type != "transfer":
+            return None  # Skip for withdrawal or deposit
+
+        if self.transaction.amount > account.max_single_transfer_amount:
             logger.warning(f"Transaction amount {self.transaction.amount} exceeds the maximum single transfer limit.")
             return "Transaction exceeds maximum single transfer limit."
-        
-        # Check daily transfer limit
-        today = now().date()
-        daily_total = self.transaction.account.transactions.filter(
-            date__date=today
-        ).aggregate(Sum('amount'))['amount__sum'] or Decimal(0)
 
-        if daily_total + self.transaction.amount > account_type.daily_transfer_limit:
-            logger.warning(f"Transaction amount {self.transaction.amount} exceeds the daily transfer limit.")
-            return "Transaction exceeds daily transfer limit."
         return None
+
 
     def check_behaviour(self):
         """Check for unusual transaction patterns."""

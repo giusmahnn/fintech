@@ -4,7 +4,6 @@ from django.db import models
 from django.db import transaction
 import logging
 from django.contrib.auth.models import AbstractUser, BaseUserManager
-# from notifications.services import create_notification
 from rbac.models import Role
 from django.utils.timezone import now
 from .choices import (
@@ -117,8 +116,7 @@ class Account(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # def __str__(self):
-    #     return f"{self.user.email} - {self.account_number}"
+    
     def __str__(self):
         return f"{self.account_number} ({self.user.get_fullname()})"
     
@@ -154,22 +152,6 @@ class Account(models.Model):
     def get_daily_transfer_limit(self):
         return self.account_type.limits.daily_transfer_limit
     
-    # def upgrade_account_type(self, new_account_type):
-    #     if new_account_type.max_balance and self.balance > new_account_type.max_balance:
-    #         raise ValueError("Account balance exceeds the maximum limit for the new account type.")
-    #     self.account_type = new_account_type
-    #     self.save()
-
-    # def request_account_upgrade(self, new_account_type, reason=None):
-    #     if self.account_type.max_balance and self.balance > self.account_type.max_balance:
-    #         raise ValueError("Account balance exceeds the maximum limit for the new account type.")
-    #     upgrade_request = UpgradeRequest(
-    #         account=self,
-    #         new_account_type=new_account_type,
-    #         reason=reason
-    #     )
-    #     upgrade_request.save()
-
     @classmethod
     def create_account(cls, user, account_type, initial_balance=0.00):
         if initial_balance < account_type.min_balance:
@@ -242,15 +224,14 @@ class AccountUpgradeRequest(models.Model):
             raise ValueError(f"Upgrade request rejection failed: {str(e)}")
 
         
-
-    # def get_actioned_by(self):
-    #     """
-    #     Return the name of the admin who approved or rejected the request.
-    #     """
-    #     if self.status == "approved" and self.approved_by:
-    #         return self.approved_by.get_fullname()
-    #     elif self.status == "rejected" and self.rejected_by:
-    #         return self.rejected_by.get_fullname()
-    #     return "Pending"
         
 
+class AuditLog(models.Model):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    action = models.CharField(max_length=255)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    timestamp = models.DateTimeField(default=now)
+    metadata = models.JSONField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user} - {self.action} at {self.timestamp}"

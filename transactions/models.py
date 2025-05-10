@@ -1,7 +1,7 @@
 from decimal import Decimal
 from django.db import models, transaction
-from django.db.models import Sum
 from accounts.models import Account, User
+from django.db.models import Sum
 from django.utils.timezone import now
 import uuid
 import logging
@@ -44,7 +44,7 @@ class Transaction(models.Model):
                 fraud_result = fraud_detection.run_checks()
                 if fraud_result:
                     self.account.flagged = True
-                    self.status = "flagged"
+                    # self.status = "flagged"
                     self.account.save()
                     logger.warning(f"Transaction {self.id} flagged: {fraud_result}")
                     # Log the flagged transaction
@@ -61,6 +61,17 @@ class Transaction(models.Model):
                         transaction=self
                     )
                     return
+                
+                # Daily transfer limit check
+                today = now().date()
+                daily_total = self.account.transactions.filter(
+                    date__date=today,
+                    transaction_type="transfer"
+                ).aggregate(Sum('amount'))['amount__sum'] or Decimal(0)
+
+                if daily_total + self.amount > self.account.daily_transfer_limit:
+                    logger.warning(f"Transaction amount {self.amount} exceeds the daily transfer limit.")
+                    raise ValueError("Transaction exceeds daily transfer limit.")
                 
                 # process the transaction
                 if self.transaction_type == "withdrawal":
