@@ -3,6 +3,8 @@ from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from fintech.throttling import CustomRateThrottle
+from rest_framework.throttling import UserRateThrottle
 from transactions.pagination import CustomPagination
 from transactions.filters import TransactionFilter
 from rest_framework import status
@@ -24,6 +26,7 @@ logger = logging.getLogger("transactions")
 
 class DepositMoneyView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
 
     def post(self, request):
         amount = request.data.get('amount')
@@ -54,6 +57,7 @@ class DepositMoneyView(APIView):
 
 class WithdrawMoneyView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
 
     def post(self, request):
         amount = request.data.get('amount')
@@ -89,6 +93,7 @@ class WithdrawMoneyView(APIView):
 
 class TransferMoneyView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [CustomRateThrottle]
 
     def post(self, request):
         amount = request.data.get('amount')
@@ -148,6 +153,7 @@ class TransferMoneyView(APIView):
 
 class TransactionFilterView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
     def get(self, request):
         user = request.user
         queryset = Transaction.objects.filter(user=user)
@@ -179,6 +185,7 @@ class TransactionFilterView(APIView):
 
 class TransactionLimitUpgradeRequestView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
 
     def post(self, request):
         user = request.user

@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-
+from rest_framework.throttling import UserRateThrottle
 from transactions.choices import Status
 from transactions.pagination import CustomPagination
 from .models import Notification
@@ -9,7 +9,8 @@ from .serializers import NotificationSerializer
 
 
 class NotificationListView(APIView):  
-    permission_classes = [IsAuthenticated]  
+    permission_classes = [IsAuthenticated] 
+    throttle_classes = [UserRateThrottle]
 
     def get(self, request):  
         user = request.user  
@@ -36,6 +37,7 @@ class NotificationListView(APIView):
         return Response(serializer.data, status=Status.HTTP_200_OK)
 class NotificationDetailView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
 
     def get(self, request, notification_id):
         try:

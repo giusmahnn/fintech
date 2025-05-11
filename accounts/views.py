@@ -1,9 +1,10 @@
 from django.shortcuts import render
-from django.urls import reverse
 from rest_framework.views import APIView
 from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
+from fintech.throttling import CustomRateThrottle
 from notifications.services import send_notification
 from django.template.loader import render_to_string
 from drf_yasg.utils import swagger_auto_schema 
@@ -35,6 +36,7 @@ def home(request):
 
 class UserCreateView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle]
 
     def post(self, request):
         data = {}
@@ -57,6 +59,8 @@ class UserCreateView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 class VerifyEmailAddress(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [CustomRateThrottle]
     def get(self, request, otp):
         if not otp:
             return Response({"message":"OTP is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -73,6 +77,7 @@ class VerifyEmailAddress(APIView):
 
 class LoginUsersView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle]
 
     # def post(self, request):
     #     data = {}
@@ -125,10 +130,18 @@ class LoginUsersView(APIView):
 
 class ProfileView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
     def get(self, request):
         user = request.user
-        account = Account.objects.get(user=user)
+        try:
+            account = Account.objects.get(user=user)
+        except Account.DoesNotExist:
+            return Response({"message": "Account not found"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = ProfileSerializer(account, many=False)
+        if not account:
+            return Response({"message": "Account not found"}, status=status.HTTP_404_NOT_FOUND)
         serializer = ProfileSerializer(account)
+        # Return the serialized account data after a successful profile update
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     def put(self, request):
@@ -146,6 +159,7 @@ class ProfileView(APIView):
 
 class InitializePasswordView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [CustomRateThrottle]
     @swagger_auto_schema(
         operation_summary="Send OTP to reset password",
         operation_description="This endpoint sends an OTP to the user's email address to initiate the password reset process.",
@@ -203,6 +217,7 @@ class InitializePasswordView(APIView):
 
 class ResetPasswordView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [CustomRateThrottle]
     @swagger_auto_schema(
         operation_summary="Reset password",
         operation_description="This endpoint resets the password for the user identified by the provided OTP.",
@@ -268,6 +283,7 @@ class ResetPasswordView(APIView):
 
 class AccountUpgradeRequestView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
 
     def post(self, request):
         user = request.user

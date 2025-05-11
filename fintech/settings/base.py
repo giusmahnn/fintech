@@ -161,9 +161,27 @@ REST_FRAMEWORK = {
         ],
         'DEFAULT_FILTER_BACKENDS': (  
             'django_filters.rest_framework.DjangoFilterBackend',
-        )
+        ),
+        "DEFAULT_THROTTLE_CLASSES": [
+            "rest_framework.throttling.AnonRateThrottle",
+            "rest_framework.throttling.UserRateThrottle",
+            
+        ],
+        "DEFAULT_THROTTLE_RATES": {
+            "anon": "10/minute",  # Anonymous users: 10 requests per minute
+            "user": "100/minute",  # Authenticated users: 100 requests per minute
+        },
+        "EXCEPTION_HANDLER": "fintech.exceptions.custom_exception_handler",
     }
 
+# Custom rate limits for different user roles
+RATE_LIMITS = {
+    "superuser": "1000/hours",
+    "admin": "1000/hours",
+    "support": "500/hours",
+    "regular_user": "100/hours",
+    "anonymous": "10/minutes",
+}
 
 # EMAIL HOST SETTINGS CONFIG
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

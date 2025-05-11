@@ -3,8 +3,10 @@ from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
+from fintech.throttling import CustomRateThrottle
 from rest_framework import status
-from accounts.models import AccountUpgradeRequest, User
+from accounts.models import AccountUpgradeRequest
 from accounts.utils import send_email, jwt_auth
 from django.template.loader import render_to_string
 from rbac.models import Role
@@ -25,6 +27,7 @@ from admin_app.serializers import (
 class CreateAdminView(APIView):
     permission_classes = [IsAuthenticated]
     # permission_classes = [AllowAny]
+    throttle_classes = [CustomRateThrottle]
 
     def post(self, request):
         with transaction.atomic():
@@ -58,6 +61,9 @@ class AdminLoginView(APIView):
     """
     View for admin user login.
     """
+    # permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle]
     def post(self, request):
         serializer = AdminLoginSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True): 
@@ -89,7 +95,8 @@ class AdminLoginView(APIView):
 
 class ReversetransactionView(APIView):
     permission_classes = [IsAuthenticated, HasPermission]
-    required_permission = "can_reverse_transaction" 
+    required_permission = "can_reverse_transaction"
+    throttle_classes = [CustomRateThrottle]
 
     def get(self, request, transaction_id):
         try:
@@ -116,8 +123,9 @@ class TransactionLimitUpgradeRequestListView(APIView):
     List all transaction limit upgrade requests.
     """
     permission_classes = [HasPermission]
-    required_permission = "can_view_upgrade_requests"  # Specify the required permission
-    # permission_classes = [AllowAny]  # Allow any user to view the list of requests
+    required_permission = "can_view_upgrade_requests"
+    # permission_classes = [AllowAny]
+    throttle_classes = [UserRateThrottle]
     def get(self, request):
         requests = TransactionLimitUpgradeRequest.objects.all().order_by('-created_at')
         paginator = CustomPagination()
@@ -132,7 +140,8 @@ class TransactionLimitUpgradeRequestDetailView(APIView):
     Retrieve a single transaction limit upgrade request by ID.
     """
     permission_classes = [IsAuthenticated, HasPermission]
-    required_permission = "can_view_upgrade_requests"  # Specify the required permission
+    required_permission = "can_view_upgrade_requests"
+    throttle_classes = [UserRateThrottle]
 
     def get(self, request, request_id):
         try:
@@ -148,8 +157,9 @@ class TransactionLimitUpgradeRequestActionView(APIView):
     Approve or reject a transaction limit upgrade request.
     """
     permission_classes = [HasPermission]
-    required_permission = "can_approve_limit_upgrade"  # Specify the required permission
-    # permission_classes = [AllowAny]  # Allow any user to approve/reject requests
+    required_permission = "can_approve_limit_upgrade"
+    # permission_classes = [AllowAny]
+    throttle_classes = [CustomRateThrottle]
     def post(self, request, request_id):
         action = request.data.get("action")
         user = request.user
@@ -177,8 +187,9 @@ class AccountUpgradeRequestListView(APIView):
     List all account upgrade requests.
     """
     permission_classes = [HasPermission]
-    required_permission = "can_view_upgrade_requests"  # Specify the required permission
-    # permission_classes = [AllowAny]  # Allow any user to view the list of requests
+    required_permission = "can_view_upgrade_requests"
+    # permission_classes = [AllowAny]
+    throttle_classes = [UserRateThrottle]
     def get(self, request):
         requests = AccountUpgradeRequest.objects.all().order_by('-created_at')
         paginator = CustomPagination()
@@ -193,7 +204,8 @@ class AccountUpgradeRequestDetailView(APIView):
     Retrieve a single account upgrade request by ID.
     """
     permission_classes = [HasPermission]
-    required_permission = "can_view_upgrade_requests"  # Specify the required permission
+    required_permission = "can_view_upgrade_requests"
+    throttle_classes = [UserRateThrottle]
 
     def get(self, request, request_id):
         try:
@@ -208,6 +220,7 @@ class AccountUpgradeRequestDetailView(APIView):
 class AccountUpgradeRequestActionView(APIView):
     permission_classes = [HasPermission]
     required_permission = "can_approve_limit_upgrade"
+    throttle_classes = [CustomRateThrottle]
 
     def post(self, request, request_id):
         action = request.data.get("action")
@@ -236,8 +249,10 @@ class FlaggedAccountListView(APIView):
     List all account upgrade requests.
     """
     permission_classes = [HasPermission]
-    required_permission = "can_view_upgrade_requests"  # Specify the required permission
-    # permission_classes = [AllowAny]  # Allow any user to view the list of requests
+    required_permission = "can_view_upgrade_requests"
+    # permission_classes = [AllowAny]
+    throttle_classes = [UserRateThrottle]
+
     def get(self, request):
         requests = FlaggedTransaction.objects.all().order_by('-flagged_at')
         paginator = CustomPagination()
@@ -251,7 +266,8 @@ class FlaggedAccountDetailView(APIView):
     Retrieve a single account upgrade request by ID.
     """
     permission_classes = [HasPermission]
-    required_permission = "can_view_upgrade_requests"  # Specify the required permission
+    required_permission = "can_view_upgrade_requests"
+    throttle_classes = [UserRateThrottle]
 
     def get(self, request, request_id):
         try:
@@ -266,6 +282,7 @@ class FlaggedAccountDetailView(APIView):
 class FlaggedAccountActionView(APIView):
     permission_classes = [HasPermission]
     required_permission = "can_approve_limit_upgrade"
+    throttle_classes = [CustomRateThrottle]
 
     def post(self, request, request_id):
         status_value = request.data.get("status_value")

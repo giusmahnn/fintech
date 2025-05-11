@@ -3,6 +3,8 @@ from rest_framework.response import Response
 from django.template.loader import render_to_string
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
+from fintech.throttling import CustomRateThrottle
+from rest_framework.throttling import UserRateThrottle
 from weasyprint import HTML
 from rest_framework import status
 from django.http import HttpResponse
@@ -19,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 class AccountStatementView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
 
     def get(self, request):
         user = request.user
@@ -64,6 +67,7 @@ class AccountStatementView(APIView):
 
 class AccountStatementEmailView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [CustomRateThrottle]
 
     def get(self, request):
         user = request.user
@@ -133,6 +137,7 @@ class AccountStatementEmailView(APIView):
 
 class AccountStatementDownloadView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
 
     def get(self, request):
         user = request.user
