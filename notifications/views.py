@@ -35,17 +35,58 @@ class NotificationListView(APIView):
  
         serializer = NotificationSerializer(queryset, many=True)  
         return Response(serializer.data, status=Status.HTTP_200_OK)
-class NotificationDetailView(APIView):
+
+
+# class NotificationDetailView(APIView):
+#     permission_classes = [IsAuthenticated]
+#     throttle_classes = [UserRateThrottle]
+
+#     def get(self, request, notification_id):
+#         try:
+#             notification = Notification.objects.get(id=notification_id, user=request.user)
+#             if not notification.is_read:
+#                 notification.is_read = True
+#                 notification.save()
+#             serializer = NotificationSerializer(notification)
+#             return Response(serializer.data, status=200)
+#         except Notification.DoesNotExist:
+#             return Response({"error": "Notification not found"}, status=Status.HTTP_404_NOT_FOUND)
+
+
+
+
+class MarkNotificationAsReadView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [UserRateThrottle]
 
-    def get(self, request, notification_id):
+    def post(self, request, notification_id):
         try:
             notification = Notification.objects.get(id=notification_id, user=request.user)
-            if not notification.is_read:
-                notification.is_read = True
-                notification.save()
-            serializer = NotificationSerializer(notification)
-            return Response(serializer.data, status=200)
+            notification.mark_as_read()
+            return Response({"message": "Notification marked as read"}, status=200)
         except Notification.DoesNotExist:
-            return Response({"error": "Notification not found"}, status=Status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Notification not found"}, status=404)
+
+class MarkNotificationAsUnreadView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
+
+    def post(self, request, notification_id):
+        try:
+            notification = Notification.objects.get(id=notification_id, user=request.user)
+            notification.mark_as_unread()
+            return Response({"message": "Notification marked as unread"}, status=200)
+        except Notification.DoesNotExist:
+            return Response({"error": "Notification not found"}, status=404)
+
+class DeleteNotificationView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
+
+    def delete(self, request, notification_id):
+        try:
+            notification = Notification.objects.get(id=notification_id, user=request.user)
+            notification.delete()
+            return Response({"message": "Notification deleted"}, status=200)
+        except Notification.DoesNotExist:
+            return Response({"error": "Notification not found"}, status=404)
