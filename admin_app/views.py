@@ -6,11 +6,11 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from fintech.throttling import CustomRateThrottle
 from rest_framework import status
-from accounts.models import AccountUpgradeRequest
+from accounts.models import Account, AccountUpgradeRequest
 from accounts.utils import send_email, jwt_auth
 from django.template.loader import render_to_string
 from rbac.models import Role
-from django.db import transaction
+from django.db import transaction, models
 from rbac.permissions import HasPermission
 from transactions.models import FlaggedTransaction, Transaction, TransactionLimitUpgradeRequest
 from transactions.pagination import CustomPagination
@@ -301,3 +301,53 @@ class FlaggedAccountActionView(APIView):
             return Response({"error": "Flagged transaction not found."}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+
+
+class AdminDashboardAnalyticsView(APIView):
+    """
+    View for admin dashboard analytics.
+    """
+    permission_classes = [HasPermission]
+    required_permission = "can_view_dashboard_analytics"
+    throttle_classes = [UserRateThrottle]
+
+    def get(self, request):
+        total_aacounts = Account.objects.all().count()
+        total_transactions = Transaction.objects.all().count()
+        total_flagged_transactions = FlaggedTransaction.objects.all().count()
+        total_transaction_limit_upgrade_requests = TransactionLimitUpgradeRequest.objects.all().count()
+        total_account_upgrade_requests = AccountUpgradeRequest.objects.all().count()
+        total_rejected_transactions = FlaggedTransaction.objects.filter(status="rejected").count()
+        total_approved_transactions = FlaggedTransaction.objects.filter(status="approved").count()
+        total_unflagged_transactions = FlaggedTransaction.objects.filter(status="unflagged").count()
+        total_pending_transactions = FlaggedTransaction.objects.filter(status="pending").count()
+        total_pending_transaction_limit_upgrade_requests = TransactionLimitUpgradeRequest.objects.filter(status="pending").count()
+        total_approved_transaction_limit_upgrade_requests = TransactionLimitUpgradeRequest.objects.filter(status="approved").count()
+        total_rejected_transaction_limit_upgrade_requests = TransactionLimitUpgradeRequest.objects.filter(status="rejected").count()
+        total_pending_account_upgrade_requests = AccountUpgradeRequest.objects.filter(status="pending").count()
+        total_approved_account_upgrade_requests = AccountUpgradeRequest.objects.filter(status="approved").count()
+        total_rejected_account_upgrade_requests = AccountUpgradeRequest.objects.filter(status="rejected").count()
+        total_revenue = Transaction.objects.filter(transaction_type="deposit").aggregate(total=models.Sum('amount'))['total'] or 0
+
+        data = {
+            "total_accounts": total_aacounts,
+            "total_transactions": total_transactions,
+            "total_flagged_transactions": total_flagged_transactions,
+            "total_transaction_limit_upgrade_requests": total_transaction_limit_upgrade_requests,
+            "total_account_upgrade_requests": total_account_upgrade_requests,
+            "total_rejected_transactions": total_rejected_transactions,
+            "total_approved_transactions": total_approved_transactions,
+            "total_unflagged_transactions": total_unflagged_transactions,
+            "total_pending_transactions": total_pending_transactions,
+            "total_pending_transaction_limit_upgrade_requests": total_pending_transaction_limit_upgrade_requests,
+            "total_approved_transaction_limit_upgrade_requests": total_approved_transaction_limit_upgrade_requests,
+            "total_rejected_transaction_limit_upgrade_requests": total_rejected_transaction_limit_upgrade_requests,
+            "total_pending_account_upgrade_requests": total_pending_account_upgrade_requests,
+            "total_approved_account_upgrade_requests": total_approved_account_upgrade_requests,
+            "total_rejected_account_upgrade_requests": total_rejected_account_upgrade_requests,
+            "total_revenue": total_revenue,
+        }
+        
+        return Response(data, status=status.HTTP_200_OK)
+    

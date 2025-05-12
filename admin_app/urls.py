@@ -11,7 +11,8 @@ from admin_app.views import (
                             AccountUpgradeRequestDetailView,
                             FlaggedAccountListView,
                             FlaggedAccountDetailView,
-                            FlaggedAccountActionView
+                            FlaggedAccountActionView,
+                            AdminDashboardAnalyticsView
 )
 
 urlpatterns = [
@@ -27,4 +28,5 @@ urlpatterns = [
     path('flagged/', FlaggedAccountListView.as_view(), name='flagged-transactions'),
     path('flagged/<int:request_id>/', FlaggedAccountDetailView.as_view(), name='flagged-transaction-detail'),
     path('flagged/<int:request_id>/review/', FlaggedAccountActionView.as_view(), name='review-flagged'),
+    path('dashboard/analytics/', AdminDashboardAnalyticsView.as_view(), name='admin_dashboard_analytics'),
 ]
